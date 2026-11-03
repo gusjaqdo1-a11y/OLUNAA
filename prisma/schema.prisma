@@ -15,6 +15,7 @@ model User {
   passwordHash        String
   bio                 String?
   avatarUrl           String?
+  verified            Boolean              @default(false)
   lastActiveAt        DateTime             @default(now())
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -24,11 +25,14 @@ model User {
   followsTo           Follow[]             @relation("to")
   memberships         GroupMember[]
   stories             Story[]
+  storyViews          StoryView[]          @relation("viewer")
   reactions           Reaction[]
   notifications       Notification[]       @relation("recipient")
   sentNotifications   Notification[]       @relation("actor")
   conversationMembers ConversationMember[]
   sentMessages        Message[]            @relation("sent")
+  channelMembers      ChannelMember[]
+  channelMessages     ChannelMessage[]
   settings             UserSettings?
 }
 
@@ -44,122 +48,169 @@ model UserSettings {
 }
 
 model Session {
-  id        String   @id @default(cuid()) @map("_id")
-  token     String   @unique
-  userId    String
+  id String @id @default(cuid()) @map("_id")
+  token String @unique
+  userId String
   expiresAt DateTime
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid()) @map("_id")
-  tokenHash String   @unique
-  userId    String
+  id String @id @default(cuid()) @map("_id")
+  tokenHash String @unique
+  userId String
   expiresAt DateTime
-  usedAt    DateTime?
+  usedAt DateTime?
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, expiresAt])
 }
 
 model Follow {
-  id          String   @id @default(cuid()) @map("_id")
-  followerId  String
+  id String @id @default(cuid()) @map("_id")
+  followerId String
   followingId String
-  createdAt   DateTime @default(now())
-  follower    User     @relation("from", fields: [followerId], references: [id], onDelete: Cascade)
-  following   User     @relation("to", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  follower User @relation("from", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("to", fields: [followingId], references: [id], onDelete: Cascade)
   @@unique([followerId, followingId])
 }
 
 model Conversation {
-  id        String               @id @default(cuid()) @map("_id")
-  type      String               @default("direct")
-  groupId   String?
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
-  group     Group?               @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  members   ConversationMember[]
-  messages  Message[]
+  id String @id @default(cuid()) @map("_id")
+  type String @default("direct")
+  groupId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  group Group? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  members ConversationMember[]
+  messages Message[]
 }
 
 model ConversationMember {
-  id             String       @id @default(cuid()) @map("_id")
+  id String @id @default(cuid()) @map("_id")
   conversationId String
-  userId         String
-  joinedAt       DateTime     @default(now())
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  joinedAt DateTime @default(now())
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([conversationId, userId])
 }
 
 model Message {
-  id             String       @id @default(cuid()) @map("_id")
+  id String @id @default(cuid()) @map("_id")
   conversationId String
-  senderId       String
-  body           String
-  deliveredAt    DateTime?
-  seenAt         DateTime?
-  createdAt      DateTime     @default(now())
-  sender         User         @relation("sent", fields: [senderId], references: [id], onDelete: Cascade)
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  reactions      Reaction[]
+  senderId String
+  body String
+  deliveredAt DateTime?
+  seenAt DateTime?
+  createdAt DateTime @default(now())
+  sender User @relation("sent", fields: [senderId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reactions Reaction[]
   @@index([conversationId, createdAt])
 }
 
 model Group {
-  id            String         @id @default(cuid()) @map("_id")
-  name          String
-  handle        String         @unique
-  description   String?
-  avatarUrl     String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  members       GroupMember[]
+  id String @id @default(cuid()) @map("_id")
+  name String
+  handle String @unique
+  description String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members GroupMember[]
   conversations Conversation[]
 }
 
 model GroupMember {
-  id        String   @id @default(cuid()) @map("_id")
-  groupId   String
-  userId    String
-  role      String   @default("member")
-  joinedAt  DateTime @default(now())
-  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id String @id @default(cuid()) @map("_id")
+  groupId String
+  userId String
+  role String @default("member")
+  joinedAt DateTime @default(now())
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([groupId, userId])
 }
 
 model Story {
-  id        String   @id @default(cuid()) @map("_id")
-  userId    String
-  mediaUrl  String
-  caption   String?
+  id String @id @default(cuid()) @map("_id")
+  userId String
+  mediaUrl String
+  caption String?
   expiresAt DateTime
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  views StoryView[]
+  @@index([userId, createdAt])
+}
+
+model StoryView {
+  id String @id @default(cuid()) @map("_id")
+  storyId String
+  viewerId String
+  viewedAt DateTime @default(now())
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  viewer User @relation("viewer", fields: [viewerId], references: [id], onDelete: Cascade)
+  @@unique([storyId, viewerId])
+  @@index([storyId, viewedAt])
+}
+
+model Channel {
+  id String @id @default(cuid()) @map("_id")
+  name String
+  handle String @unique
+  description String?
+  avatarUrl String?
+  verified Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members ChannelMember[]
+  messages ChannelMessage[]
+}
+
+model ChannelMember {
+  id String @id @default(cuid()) @map("_id")
+  channelId String
+  userId String
+  joinedAt DateTime @default(now())
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([channelId, userId])
+}
+
+model ChannelMessage {
+  id String @id @default(cuid()) @map("_id")
+  channelId String
+  authorId String
+  body String
+  createdAt DateTime @default(now())
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  @@index([channelId, createdAt])
 }
 
 model Reaction {
-  id        String   @id @default(cuid()) @map("_id")
-  emoji     String
-  userId    String
+  id String @id @default(cuid()) @map("_id")
+  emoji String
+  userId String
   messageId String
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   @@unique([userId, messageId, emoji])
 }
 
 model Notification {
-  id          String   @id @default(cuid()) @map("_id")
+  id String @id @default(cuid()) @map("_id")
   recipientId String
-  actorId     String?
-  type        String
-  body        String
-  readAt      DateTime?
-  createdAt   DateTime @default(now())
-  recipient   User     @relation("recipient", fields: [recipientId], references: [id], onDelete: Cascade)
-  actor       User?    @relation("actor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorId String?
+  type String
+  body String
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  recipient User @relation("recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor User? @relation("actor", fields: [actorId], references: [id], onDelete: SetNull)
 }
