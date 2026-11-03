@@ -2,6 +2,17 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { isAdmin } from "../../../../lib/admin";
 export const runtime = "nodejs";
+
+export async function GET() {
+  if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const channels = await db.channel.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: 100,
+    include: { _count: { select: { members: true, messages: true } } },
+  });
+  return NextResponse.json({ channels });
+}
+
 export async function POST(req: Request) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { name, handle, description, avatarUrl, body } = await req.json().catch(() => ({}));
@@ -13,4 +24,12 @@ export async function POST(req: Request) {
   const message = await db.channelMessage.create({ data: { channelId: channel.id, authorId: adminUser.id, body: String(body).trim() }, include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true, verified: true } } } });
   await db.channel.update({ where: { id: channel.id }, data: { updatedAt: new Date() } });
   return NextResponse.json({ channel, message }, { status: 201 });
+}
+
+export async function DELETE(req: Request) {
+  if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { channelId } = await req.json().catch(() => ({}));
+  if (!channelId) return NextResponse.json({ error: "channelId is required" }, { status: 400 });
+  await db.channel.delete({ where: { id: String(channelId) } });
+  return NextResponse.json({ ok: true });
 }
