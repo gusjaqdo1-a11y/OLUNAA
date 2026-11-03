@@ -8,24 +8,38 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  username      String         @unique
-  displayName   String
-  passwordHash  String
-  bio           String?
-  avatarUrl     String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  sessions      Session[]
-  sentMessages  Message[]      @relation("sent")
-  followsFrom   Follow[]       @relation("from")
-  followsTo     Follow[]       @relation("to")
-  memberships   GroupMember[]
-  stories       Story[]
-  reactions     Reaction[]
-  notifications Notification[] @relation("recipient")
-  sentNotifications Notification[] @relation("actor")
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  username            String               @unique
+  displayName         String
+  passwordHash        String
+  bio                 String?
+  avatarUrl           String?
+  lastActiveAt        DateTime             @default(now())
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  sessions            Session[]
+  followsFrom         Follow[]             @relation("from")
+  followsTo           Follow[]             @relation("to")
+  memberships         GroupMember[]
+  stories             Story[]
+  reactions           Reaction[]
+  notifications       Notification[]      @relation("recipient")
+  sentNotifications   Notification[]      @relation("actor")
+  conversationMembers ConversationMember[]
+  sentMessages        Message[]            @relation("sent")
+  settings            UserSettings?
+}
+
+model UserSettings {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  showOnlineStatus  Boolean  @default(true)
+  showLastSeen      Boolean  @default(true)
+  readReceipts      Boolean  @default(true)
+  typingIndicators  Boolean  @default(true)
+  messageRequests  Boolean  @default(true)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Session {
@@ -44,31 +58,55 @@ model Follow {
   createdAt   DateTime @default(now())
   follower    User     @relation("from", fields: [followerId], references: [id], onDelete: Cascade)
   following   User     @relation("to", fields: [followingId], references: [id], onDelete: Cascade)
-
   @@unique([followerId, followingId])
 }
 
-model Message {
-  id        String     @id @default(cuid())
-  senderId  String
-  body      String
+model Conversation {
+  id        String               @id @default(cuid())
+  type      String               @default("direct")
   groupId   String?
-  createdAt DateTime   @default(now())
-  sender    User       @relation("sent", fields: [senderId], references: [id], onDelete: Cascade)
-  group     Group?     @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  reactions Reaction[]
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  group     Group?               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  members   ConversationMember[]
+  messages  Message[]
+}
+
+model ConversationMember {
+  id             String       @id @default(cuid())
+  conversationId String
+  userId         String
+  joinedAt       DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  deliveredAt    DateTime?
+  seenAt         DateTime?
+  createdAt      DateTime     @default(now())
+  sender         User         @relation("sent", fields: [senderId], references: [id], onDelete: Cascade)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reactions      Reaction[]
+  @@index([conversationId, createdAt])
 }
 
 model Group {
-  id          String        @id @default(cuid())
-  name        String
-  handle      String        @unique
-  description String?
-  avatarUrl   String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  members     GroupMember[]
-  messages    Message[]
+  id             String               @id @default(cuid())
+  name           String
+  handle         String               @unique
+  description    String?
+  avatarUrl      String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  members        GroupMember[]
+  messages       Message[]
+  conversations  Conversation[]
 }
 
 model GroupMember {
@@ -79,7 +117,6 @@ model GroupMember {
   joinedAt  DateTime @default(now())
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@unique([groupId, userId])
 }
 
@@ -101,7 +138,6 @@ model Reaction {
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-
   @@unique([userId, messageId, emoji])
 }
 
