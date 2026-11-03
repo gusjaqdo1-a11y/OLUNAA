@@ -11,8 +11,8 @@ android {
         applicationId = "com.olunaa.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 32
-        versionName = "1.3.2"
+        versionCode = 33
+        versionName = "1.3.3"
     }
     buildTypes {
         release {
@@ -41,9 +41,7 @@ tasks.register("normalizeInsetsSource") {
     }
 }
 
-tasks.named("preBuild") {
-    dependsOn("normalizeInsetsSource")
-}
+tasks.named("preBuild") { dependsOn("normalizeInsetsSource") }
 
 val mediaPack = file("$projectDir/src/main/assets/olunaa_media_pack.bin")
 val generateMediaPack = tasks.register("generateMediaPack") {
@@ -67,6 +65,4 @@ val generateMediaPack = tasks.register("generateMediaPack") {
     }
 }
 
-tasks.named("preBuild") {
-    dependsOn(generateMediaPack)
-}
+tasks.named("preBuild") { dependsOn(generateMediaPack) }
