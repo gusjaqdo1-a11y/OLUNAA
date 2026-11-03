@@ -1,8 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
-    <application android:allowBackup="false" android:label="OLUNAA" android:icon="@drawable/ic_olunaa" android:roundIcon="@drawable/ic_olunaa" android:theme="@style/Theme.OLUNAA" android:usesCleartextTraffic="false">
-        <activity android:name=".MainActivity" android:exported="true">
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <application
+        android:allowBackup="false"
+        android:label="OLUNAA"
+        android:icon="@drawable/ic_olunaa"
+        android:roundIcon="@drawable/ic_olunaa"
+        android:theme="@style/Theme.OLUNAA"
+        android:usesCleartextTraffic="false"
+        android:resizeableActivity="true">
+        <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
