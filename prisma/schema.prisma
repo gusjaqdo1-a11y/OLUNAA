@@ -1,0 +1,45 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  username     String   @unique
+  displayName   String
+  passwordHash String
+  bio          String?
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  sessions     Session[]
+  sentMessages Message[] @relation("sent")
+  followsFrom  Follow[] @relation("from")
+  followsTo    Follow[] @relation("to")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields:[userId], references:[id], onDelete:Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User @relation("from", fields:[followerId], references:[id], onDelete:Cascade)
+  following   User @relation("to", fields:[followingId], references:[id], onDelete:Cascade)
+  @@unique([followerId, followingId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  senderId  String
+  body      String
+  createdAt DateTime @default(now())
+  sender    User @relation("sent", fields:[senderId], references:[id], onDelete:Cascade)
+}
