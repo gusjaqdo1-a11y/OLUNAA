@@ -1,8 +1,25 @@
 {
-  "name":"olunaa",
-  "version":"0.2.1",
-  "private":true,
-  "scripts":{"dev":"next dev","build":"prisma db push --skip-generate && prisma generate && next build","start":"next start"},
-  "dependencies":{"@prisma/client":"^6.19.0","lucide-react":"^0.468.0","next":"^16.0.1","react":"^19.2.0","react-dom":"^19.2.0","bcryptjs":"^3.0.2"},
-  "devDependencies":{"@types/node":"^22.0.0","@types/react":"^19.0.0","@types/react-dom":"^19.0.0","prisma":"^6.19.0","typescript":"^5.7.0"}
+  "name": "olunaa",
+  "version": "0.2.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "node scripts/prisma-build.js && next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "lucide-react": "^0.468.0",
+    "next": "^16.0.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "bcryptjs": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "prisma": "^6.19.0",
+    "typescript": "^5.7.0"
+  }
 }
