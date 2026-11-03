@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
-    <shortcut android:shortcutId="admin" android:enabled="true" android:icon="@drawable/ic_olunaa" android:shortcutShortLabel="Admin" android:shortcutLongLabel="OLUNAA Admin Panel">
-        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.olunaa.app" android:targetClass="com.olunaa.app.AdminActivity" />
+    <shortcut
+        android:shortcutId="admin"
+        android:enabled="true"
+        android:icon="@drawable/ic_olunaa"
+        android:shortcutShortLabel="@string/shortcut_admin_short"
+        android:shortcutLongLabel="@string/shortcut_admin_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.olunaa.app"
+            android:targetClass="com.olunaa.app.AdminActivity" />
     </shortcut>
 </shortcuts>
