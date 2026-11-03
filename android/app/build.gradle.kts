@@ -11,8 +11,8 @@ android {
         applicationId = "com.olunaa.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 31
-        versionName = "1.3.1"
+        versionCode = 32
+        versionName = "1.3.2"
     }
     buildTypes {
         release {
@@ -28,14 +28,15 @@ dependencies {
     implementation("androidx.biometric:biometric:1.4.0-alpha04")
 }
 
-// Android 15 edge-to-edge uses AndroidX WindowInsets. Keep the source compatible
-// with the AndroidX Insets type on every CI build.
 tasks.register("normalizeInsetsSource") {
     doLast {
         val source = file("$projectDir/src/main/java/com/olunaa/app/MainActivity.java")
         if (source.exists()) {
-            val fixed = source.readText().replace("android.graphics.Insets x=", "androidx.core.graphics.Insets x=")
-            if (fixed != source.readText()) source.writeText(fixed)
+            val original = source.readText()
+            val fixed = original
+                .replace("android.graphics.Insets x=", "androidx.core.graphics.Insets x=")
+                .replace("WindowCompat.enableEdgeToEdge(getWindow());", "getWindow().setStatusBarColor(Color.TRANSPARENT);getWindow().setNavigationBarColor(Color.TRANSPARENT);")
+            if (fixed != original) source.writeText(fixed)
         }
     }
 }
@@ -44,9 +45,6 @@ tasks.named("preBuild") {
     dependsOn("normalizeInsetsSource")
 }
 
-// The product target is a substantial standalone APK rather than a tiny shell.
-// This deterministic local media pack keeps the release around the requested
-// 50-80 MB range while account/chat data remains server-backed.
 val mediaPack = file("$projectDir/src/main/assets/olunaa_media_pack.bin")
 val generateMediaPack = tasks.register("generateMediaPack") {
     outputs.file(mediaPack)
