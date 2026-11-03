@@ -10,7 +10,11 @@ export async function GET(req: Request) {
   const users = await db.user.findMany({
     where: q ? { OR: [{ username: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } }, { displayName: { contains: q, mode: "insensitive" } }] } : undefined,
     orderBy: { createdAt: "desc" }, take: 100,
-    select: { id: true, username: true, displayName: true, email: true, avatarUrl: true, bio: true, verified: true, lastActiveAt: true, createdAt: true, _count: { select: { sessions: true, messages: true, stories: true, conversations: true } } },
+    select: {
+      id: true, username: true, displayName: true, email: true, avatarUrl: true, bio: true,
+      verified: true, lastActiveAt: true, createdAt: true,
+      _count: { select: { sessions: true, sentMessages: true, stories: true, conversationMembers: true, memberships: true, channelMembers: true, channelMessages: true, reactions: true } },
+    },
   });
   return NextResponse.json({ users });
 }
