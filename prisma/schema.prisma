@@ -3,12 +3,12 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
 }
 
 model User {
-  id                  String               @id @default(cuid())
+  id                  String               @id @default(cuid()) @map("_id")
   email               String               @unique
   username            String               @unique
   displayName         String
@@ -29,11 +29,11 @@ model User {
   sentNotifications   Notification[]       @relation("actor")
   conversationMembers ConversationMember[]
   sentMessages        Message[]            @relation("sent")
-  settings            UserSettings?
+  settings             UserSettings?
 }
 
 model UserSettings {
-  id               String  @id @default(cuid())
+  id               String  @id @default(cuid()) @map("_id")
   userId           String  @unique
   showOnlineStatus Boolean @default(true)
   showLastSeen     Boolean @default(true)
@@ -44,7 +44,7 @@ model UserSettings {
 }
 
 model Session {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   token     String   @unique
   userId    String
   expiresAt DateTime
@@ -53,7 +53,7 @@ model Session {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   tokenHash String   @unique
   userId    String
   expiresAt DateTime
@@ -64,7 +64,7 @@ model PasswordResetToken {
 }
 
 model Follow {
-  id          String   @id @default(cuid())
+  id          String   @id @default(cuid()) @map("_id")
   followerId  String
   followingId String
   createdAt   DateTime @default(now())
@@ -74,7 +74,7 @@ model Follow {
 }
 
 model Conversation {
-  id        String               @id @default(cuid())
+  id        String               @id @default(cuid()) @map("_id")
   type      String               @default("direct")
   groupId   String?
   createdAt DateTime             @default(now())
@@ -85,7 +85,7 @@ model Conversation {
 }
 
 model ConversationMember {
-  id             String       @id @default(cuid())
+  id             String       @id @default(cuid()) @map("_id")
   conversationId String
   userId         String
   joinedAt       DateTime     @default(now())
@@ -95,7 +95,7 @@ model ConversationMember {
 }
 
 model Message {
-  id             String       @id @default(cuid())
+  id             String       @id @default(cuid()) @map("_id")
   conversationId String
   senderId       String
   body           String
@@ -109,7 +109,7 @@ model Message {
 }
 
 model Group {
-  id            String         @id @default(cuid())
+  id            String         @id @default(cuid()) @map("_id")
   name          String
   handle        String         @unique
   description   String?
@@ -121,7 +121,7 @@ model Group {
 }
 
 model GroupMember {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   groupId   String
   userId    String
   role      String   @default("member")
@@ -132,7 +132,7 @@ model GroupMember {
 }
 
 model Story {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   userId    String
   mediaUrl  String
   caption   String?
@@ -142,7 +142,7 @@ model Story {
 }
 
 model Reaction {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   emoji     String
   userId    String
   messageId String
@@ -153,7 +153,7 @@ model Reaction {
 }
 
 model Notification {
-  id          String   @id @default(cuid())
+  id          String   @id @default(cuid()) @map("_id")
   recipientId String
   actorId     String?
   type        String
