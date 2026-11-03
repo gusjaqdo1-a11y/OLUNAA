@@ -10,8 +10,13 @@
         android:roundIcon="@drawable/ic_olunaa"
         android:theme="@style/Theme.OLUNAA"
         android:usesCleartextTraffic="false"
-        android:resizeableActivity="true">
-        <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait" android:windowSoftInputMode="adjustResize">
+        android:resizeableActivity="true"
+        android:supportsRtl="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
