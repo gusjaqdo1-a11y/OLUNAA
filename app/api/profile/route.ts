@@ -17,7 +17,11 @@ export async function PATCH(req: Request) {
   const data: Record<string, unknown> = {};
   if (displayName !== undefined) data.displayName = String(displayName).trim().slice(0, 80);
   if (bio !== undefined) data.bio = String(bio).trim().slice(0, 500);
-  if (avatarUrl !== undefined) data.avatarUrl = avatarUrl ? String(avatarUrl).trim().slice(0, 2000) : null;
+  if (avatarUrl !== undefined) {
+    const avatar = avatarUrl ? String(avatarUrl).trim() : "";
+    if (avatar.length > 3500000) return NextResponse.json({ error: "Profile photo is too large. Choose a smaller image." }, { status: 413 });
+    data.avatarUrl = avatar || null;
+  }
   if (username !== undefined) {
     const next = String(username).trim().replace(/^@/, "").toLowerCase();
     if (!/^[a-z0-9_]{3,30}$/.test(next)) return NextResponse.json({ error: "Username must be 3-30 characters: letters, numbers, underscore." }, { status: 400 });
