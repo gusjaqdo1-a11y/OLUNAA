@@ -8,19 +8,24 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  username     String    @unique
-  displayName  String
-  passwordHash String
-  bio          String?
-  avatarUrl    String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  sessions     Session[]
-  sentMessages Message[] @relation("sent")
-  followsFrom  Follow[]  @relation("from")
-  followsTo    Follow[]  @relation("to")
+  id            String         @id @default(cuid())
+  email         String         @unique
+  username      String         @unique
+  displayName   String
+  passwordHash  String
+  bio           String?
+  avatarUrl     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  sessions      Session[]
+  sentMessages  Message[]      @relation("sent")
+  followsFrom   Follow[]       @relation("from")
+  followsTo     Follow[]       @relation("to")
+  memberships   GroupMember[]
+  stories       Story[]
+  reactions     Reaction[]
+  notifications Notification[] @relation("recipient")
+  sentNotifications Notification[] @relation("actor")
 }
 
 model Session {
@@ -44,9 +49,70 @@ model Follow {
 }
 
 model Message {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   senderId  String
   body      String
+  groupId   String?
+  createdAt DateTime   @default(now())
+  sender    User       @relation("sent", fields: [senderId], references: [id], onDelete: Cascade)
+  group     Group?     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  reactions Reaction[]
+}
+
+model Group {
+  id          String        @id @default(cuid())
+  name        String
+  handle      String        @unique
+  description String?
+  avatarUrl   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  members     GroupMember[]
+  messages    Message[]
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String
+  role      String   @default("member")
+  joinedAt  DateTime @default(now())
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model Story {
+  id        String   @id @default(cuid())
+  userId    String
+  mediaUrl  String
+  caption   String?
+  expiresAt DateTime
   createdAt DateTime @default(now())
-  sender    User     @relation("sent", fields: [senderId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  emoji     String
+  userId    String
+  messageId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, messageId, emoji])
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  recipientId String
+  actorId     String?
+  type        String
+  body        String
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  recipient   User     @relation("recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor       User?    @relation("actor", fields: [actorId], references: [id], onDelete: SetNull)
 }
