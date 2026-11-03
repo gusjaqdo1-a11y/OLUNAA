@@ -24,22 +24,22 @@ model User {
   memberships         GroupMember[]
   stories             Story[]
   reactions           Reaction[]
-  notifications       Notification[]      @relation("recipient")
-  sentNotifications   Notification[]      @relation("actor")
+  notifications       Notification[]       @relation("recipient")
+  sentNotifications   Notification[]       @relation("actor")
   conversationMembers ConversationMember[]
   sentMessages        Message[]            @relation("sent")
   settings            UserSettings?
 }
 
 model UserSettings {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  showOnlineStatus  Boolean  @default(true)
-  showLastSeen      Boolean  @default(true)
-  readReceipts      Boolean  @default(true)
-  typingIndicators  Boolean  @default(true)
-  messageRequests  Boolean  @default(true)
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String  @id @default(cuid())
+  userId           String  @unique
+  showOnlineStatus Boolean @default(true)
+  showLastSeen     Boolean @default(true)
+  readReceipts     Boolean @default(true)
+  typingIndicators Boolean @default(true)
+  messageRequests  Boolean @default(true)
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Session {
@@ -97,16 +97,15 @@ model Message {
 }
 
 model Group {
-  id             String               @id @default(cuid())
-  name           String
-  handle         String               @unique
-  description    String?
-  avatarUrl      String?
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  members        GroupMember[]
-  messages       Message[]
-  conversations  Conversation[]
+  id            String         @id @default(cuid())
+  name          String
+  handle        String         @unique
+  description   String?
+  avatarUrl     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  members       GroupMember[]
+  conversations Conversation[]
 }
 
 model GroupMember {
