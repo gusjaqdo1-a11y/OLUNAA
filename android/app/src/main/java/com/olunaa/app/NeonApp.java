@@ -1,0 +1,9 @@
+package com.olunaa.app;
+import android.app.*;import android.os.*;import android.graphics.Color;import android.graphics.drawable.GradientDrawable;import android.view.*;import android.widget.*;
+public class NeonApp extends Application{
+ private static final int BG=Color.rgb(5,7,20),CARD=Color.rgb(18,16,44),FIELD=Color.rgb(22,20,50),WHITE=Color.rgb(248,248,255),MUTED=Color.rgb(175,177,214),PURPLE=Color.rgb(132,55,255),MAGENTA=Color.rgb(220,45,255),CYAN=Color.rgb(30,190,255);
+ public void onCreate(){super.onCreate();registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks(){public void onActivityCreated(Activity a,Bundle b){style(a);new Handler(Looper.getMainLooper()).postDelayed(()->style(a),180);}public void onActivityResumed(Activity a){new Handler(Looper.getMainLooper()).postDelayed(()->style(a),80);}public void onActivityStarted(Activity a){}public void onActivityPaused(Activity a){}public void onActivityStopped(Activity a){}public void onActivitySaveInstanceState(Activity a,Bundle b){}public void onActivityDestroyed(Activity a){}});}
+ private GradientDrawable g(int[] c){GradientDrawable x=new GradientDrawable(GradientDrawable.Orientation.TL_BR,c);x.setCornerRadius(24);x.setStroke(1,Color.rgb(73,61,160));return x;}
+ private void style(Activity a){try{a.getWindow().setStatusBarColor(Color.TRANSPARENT);a.getWindow().setNavigationBarColor(Color.TRANSPARENT);walk(a.getWindow().getDecorView());}catch(Exception ignored){}}
+ private void walk(View v){if(v instanceof ViewGroup){ViewGroup q=(ViewGroup)v;for(int i=0;i<q.getChildCount();i++)walk(q.getChildAt(i));}if(v instanceof EditText){EditText e=(EditText)v;e.setTextColor(WHITE);e.setHintTextColor(MUTED);e.setBackground(g(new int[]{FIELD,Color.rgb(20,20,58)}));}else if(v instanceof Button){Button b=(Button)v;b.setTextColor(Color.WHITE);b.setAllCaps(false);b.setBackground(g(new int[]{PURPLE,MAGENTA,CYAN}));}else if(v instanceof TextView){TextView t=(TextView)v;t.setTextColor(WHITE);}}
+}
