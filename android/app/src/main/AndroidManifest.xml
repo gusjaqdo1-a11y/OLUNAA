@@ -4,6 +4,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <application
+        android:name=".NeonApp"
         android:allowBackup="false"
         android:label="OLUNAA"
         android:icon="@drawable/ic_olunaa"
@@ -17,10 +18,12 @@
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize">
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".AdminActivity" android:exported="false" android:screenOrientation="unspecified" />
     </application>
 </manifest>
