@@ -1,63 +1,52 @@
 package com.olunaa.app;
 
-import android.annotation.SuppressLint;
-import android.app.AlertDialog;
-import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.WindowManager;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import android.widget.Switch;
-import android.widget.Toast;
+import android.app.*;
+import android.content.*;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.os.*;
+import android.view.*;
+import android.widget.*;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
-import java.util.concurrent.Executor;
+import org.json.*;
+import java.io.*;
+import java.net.*;
+import java.util.concurrent.*;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String PREFS = "olunaa_security";
-    private static final String BIOMETRIC_LOCK = "biometric_lock";
-    private WebView webView;
-    private boolean authenticated = false;
-
-    @SuppressLint("SetJavaScriptEnabled")
-    @Override protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
-        webView = new WebView(this); setContentView(webView);
-        WebSettings s = webView.getSettings();
-        s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true);
-        s.setMediaPlaybackRequiresUserGesture(false); s.setBuiltInZoomControls(false); s.setDisplayZoomControls(false);
-        webView.setWebViewClient(new WebViewClient()); webView.loadUrl("https://olunaa.vercel.app/");
-        if (isBiometricLockEnabled()) { webView.setVisibility(WebView.INVISIBLE); authenticate(); }
-    }
-    private boolean isBiometricLockEnabled() { return getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(BIOMETRIC_LOCK, false); }
-    private boolean biometricAvailable() { return BiometricManager.from(this).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS; }
-    private void authenticate() {
-        if (!biometricAvailable()) { webView.setVisibility(WebView.VISIBLE); Toast.makeText(this, "No supported biometric or device credential is enrolled.", Toast.LENGTH_LONG).show(); return; }
-        Executor executor = ContextCompat.getMainExecutor(this);
-        BiometricPrompt prompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
-            @Override public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) { authenticated = true; webView.setVisibility(WebView.VISIBLE); }
-            @Override public void onAuthenticationError(int code, @NonNull CharSequence message) { authenticated = false; Toast.makeText(MainActivity.this, "OLUNAA locked: " + message, Toast.LENGTH_SHORT).show(); }
-        });
-        BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder().setTitle("Unlock OLUNAA").setSubtitle("Use fingerprint, face, or your device credential").setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL).setConfirmationRequired(false).build();
-        prompt.authenticate(info);
-    }
-    @Override protected void onResume() { super.onResume(); if (webView != null && isBiometricLockEnabled() && !authenticated) { webView.setVisibility(WebView.INVISIBLE); authenticate(); } }
-    @Override protected void onPause() { super.onPause(); if (isBiometricLockEnabled()) { authenticated = false; if (webView != null) webView.setVisibility(WebView.INVISIBLE); } }
-    @Override public boolean onCreateOptionsMenu(Menu menu) { menu.add("Security settings"); menu.add("Reload OLUNAA"); return true; }
-    @Override public boolean onOptionsItemSelected(MenuItem item) {
-        if ("Security settings".contentEquals(item.getTitle())) { showSecuritySettings(); return true; }
-        if ("Reload OLUNAA".contentEquals(item.getTitle())) { webView.reload(); return true; }
-        return super.onOptionsItemSelected(item);
-    }
-    private void showSecuritySettings() {
-        if (!biometricAvailable()) { new AlertDialog.Builder(this).setTitle("Biometric unavailable").setMessage("Enroll a fingerprint, face, or secure device credential in Android Settings first.").setPositiveButton("OK", null).show(); return; }
-        Switch sw = new Switch(this); sw.setText("Require fingerprint / biometric to open OLUNAA"); sw.setChecked(isBiometricLockEnabled());
-        new AlertDialog.Builder(this).setTitle("OLUNAA Security").setView(sw).setMessage("This app lock uses Android's secure biometric system. It does not replace your OLUNAA account password.").setPositiveButton("Save", (d,w) -> { getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(BIOMETRIC_LOCK, sw.isChecked()).apply(); authenticated = !sw.isChecked(); Toast.makeText(this, sw.isChecked() ? "Biometric lock enabled" : "Biometric lock disabled", Toast.LENGTH_SHORT).show(); if (sw.isChecked()) authenticate(); else webView.setVisibility(WebView.VISIBLE); }).setNegativeButton("Cancel", null).show();
-    }
+    private static final String API="https://olunaa.vercel.app/api";
+    private static final int BG=Color.rgb(8,10,16),CARD=Color.rgb(18,21,30),CARD2=Color.rgb(25,29,40),TEXT=Color.rgb(245,247,252),MUTED=Color.rgb(150,158,176),ACCENT=Color.rgb(92,92,255);
+    private final ExecutorService io=Executors.newCachedThreadPool(); private final Handler handler=new Handler(Looper.getMainLooper()); private final CookieManager cookies=new CookieManager(null,CookiePolicy.ACCEPT_ALL);
+    private LinearLayout root,content; private TextView title; private String meId="",meUsername="",currentConversation="";
+    @Override protected void onCreate(Bundle b){super.onCreate(b);CookieHandler.setDefault(cookies);getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE,WindowManager.LayoutParams.FLAG_SECURE);showAuth(false);}
+    private TextView tv(String s,float z,int c){TextView v=new TextView(this);v.setText(s);v.setTextSize(z);v.setTextColor(c);return v;}
+    private GradientDrawable bg(int c,float r){GradientDrawable g=new GradientDrawable();g.setColor(c);g.setCornerRadius(r);return g;}
+    private Button btn(String s){Button b=new Button(this);b.setText(s);b.setTextColor(TEXT);b.setTextSize(14);b.setAllCaps(false);b.setBackground(bg(ACCENT,28));return b;}
+    private EditText input(String h){EditText e=new EditText(this);e.setHint(h);e.setHintTextColor(MUTED);e.setTextColor(TEXT);e.setSingleLine(true);e.setTextSize(15);e.setPadding(20,0,20,0);e.setBackground(bg(CARD2,26));e.setLayoutParams(new LinearLayout.LayoutParams(-1,58));return e;}
+    private void base(){root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(BG);root.setPadding(18,18,18,10);setContentView(root);}
+    private void showAuth(boolean reg){base();LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setGravity(Gravity.CENTER_HORIZONTAL);ScrollView sc=new ScrollView(this);sc.addView(box);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));TextView logo=tv("◉",64,ACCENT);box.addView(logo,new LinearLayout.LayoutParams(-2,90));TextView brand=tv("OLUNAA",34,TEXT);brand.setTypeface(null,1);box.addView(brand);box.addView(tv("Private. Fast. Connected.",15,MUTED));Space sp=new Space(this);box.addView(sp,new LinearLayout.LayoutParams(1,28));
+        EditText name=null,email=input("Email address"),user=input("Username or @username"),pass=input("Password");if(reg){name=input("Display name");box.addView(name);box.addView(email);}box.addView(user);box.addView(pass);Button go=btn(reg?"Create account":"Sign in");box.addView(go,new LinearLayout.LayoutParams(-1,58));TextView toggle=tv(reg?"Already have an account?  Sign in":"New to OLUNAA?  Create account",14,ACCENT);toggle.setGravity(Gravity.CENTER);toggle.setPadding(0,24,0,20);box.addView(toggle);TextView forgot=tv("Forgot password?",14,MUTED);forgot.setGravity(Gravity.CENTER);if(!reg)box.addView(forgot);
+        go.setOnClickListener(v->{JSONObject j=new JSONObject();try{if(reg){j.put("displayName",name.getText().toString());j.put("email",email.getText().toString());j.put("username",user.getText().toString());}else j.put("identifier",user.getText().toString());j.put("password",pass.getText().toString());}catch(Exception ignored){}go.setEnabled(false);api(reg?"/auth/register":"/auth/login","POST",j,r->{go.setEnabled(true);if(r.ok){JSONObject u=r.data.optJSONObject("user");if(u==null&&r.data.optJSONObject("data")!=null)u=r.data.optJSONObject("data").optJSONObject("user");if(u!=null){meId=u.optString("id");meUsername=u.optString("username");showHome();}}else toast(r.error);});});toggle.setOnClickListener(v->showAuth(!reg));forgot.setOnClickListener(v->showForgot());}
+    private void showForgot(){base();LinearLayout b=new LinearLayout(this);b.setOrientation(LinearLayout.VERTICAL);root.addView(b);TextView h=tv("Reset your password",28,TEXT);h.setTypeface(null,1);b.addView(h);b.addView(tv("Enter your username or email and request a reset link.",14,MUTED));EditText id=input("Username or email");b.addView(id);Button go=btn("Send reset link");b.addView(go,new LinearLayout.LayoutParams(-1,58));TextView back=tv("Back to sign in",14,ACCENT);back.setPadding(0,24,0,0);b.addView(back);go.setOnClickListener(v->{JSONObject j=new JSONObject();try{j.put("identifier",id.getText().toString());}catch(Exception ignored){}api("/auth/forgot","POST",j,r->toast(r.ok?"Reset request sent if the account exists.":r.error));});back.setOnClickListener(v->showAuth(false));}
+    private void showHome(){base();LinearLayout head=new LinearLayout(this);head.setGravity(Gravity.CENTER_VERTICAL);TextView mark=tv("◉",34,ACCENT);head.addView(mark,new LinearLayout.LayoutParams(48,58));LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);title=tv("Chats",24,TEXT);title.setTypeface(null,1);names.addView(title);names.addView(tv("@"+meUsername,13,MUTED));head.addView(names,new LinearLayout.LayoutParams(0,58,1));Button plus=btn("＋");head.addView(plus,new LinearLayout.LayoutParams(58,52));root.addView(head);content=new LinearLayout(this);content.setOrientation(LinearLayout.VERTICAL);root.addView(content,new LinearLayout.LayoutParams(-1,0,1));LinearLayout nav=new LinearLayout(this);String[] ns={"Chats","Status","Calls","Discover","Settings"};for(String n:ns){Button x=btn(n);x.setTextSize(11);x.setBackground(bg(CARD,22));x.setOnClickListener(v->switchTab(n));nav.addView(x,new LinearLayout.LayoutParams(0,54,1));}root.addView(nav);plus.setOnClickListener(v->newChat());loadChats();}
+    private void switchTab(String n){title.setText(n);content.removeAllViews();if(n.equals("Chats"))loadChats();else if(n.equals("Status"))loadStatus();else if(n.equals("Calls"))loadCalls();else if(n.equals("Discover"))loadDiscover();else loadSettings();}
+    private void loadChats(){content.addView(tv("Your conversations",14,MUTED));api("/conversations","GET",null,r->{if(!r.ok){content.addView(tv("Unable to load chats: "+r.error,16,TEXT));return;}JSONArray a=r.data.optJSONArray("conversations");if(a==null||a.length()==0){TextView e=tv("No chats yet. Tap ＋ to find someone by username.",17,TEXT);e.setPadding(8,40,8,0);content.addView(e);return;}for(int i=0;i<a.length();i++){JSONObject c=a.optJSONObject(i);JSONObject o=c.optJSONObject("other");if(o==null)continue;JSONObject lm=c.optJSONObject("lastMessage");String last=lm==null?"":lm.optString("body","");TextView row=tv((o.optBoolean("online")?"● ":"○ ")+o.optString("displayName")+"\n@"+o.optString("username")+(last.isEmpty()?"":"   "+last),16,TEXT);row.setPadding(18,14,18,14);row.setBackground(bg(CARD,22));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,82);p.setMargins(0,6,0,6);content.addView(row,p);String cid=c.optString("id");row.setOnClickListener(v->openChat(cid,o.optString("displayName")));}pollChats();});}
+    private void pollChats(){handler.postDelayed(()->{if(title!=null&&"Chats".contentEquals(title.getText())){content.removeAllViews();loadChats();}},5000);}
+    private void openChat(String cid,String name){currentConversation=cid;content.removeAllViews();LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);TextView back=tv("‹",36,TEXT);bar.addView(back,new LinearLayout.LayoutParams(48,55));TextView h=tv(name,20,TEXT);h.setTypeface(null,1);bar.addView(h,new LinearLayout.LayoutParams(0,55,1));Button call=btn("☎");Button video=btn("▣");bar.addView(call,new LinearLayout.LayoutParams(54,50));bar.addView(video,new LinearLayout.LayoutParams(64,50));content.addView(bar);back.setOnClickListener(v->{currentConversation="";loadChats();});call.setOnClickListener(v->toast("Voice call screen is ready; live WebRTC signaling still needs a call server."));video.setOnClickListener(v->toast("Video call screen is ready; live WebRTC signaling still needs a call server."));ScrollView sc=new ScrollView(this);LinearLayout msgs=new LinearLayout(this);msgs.setOrientation(LinearLayout.VERTICAL);sc.addView(msgs);content.addView(sc,new LinearLayout.LayoutParams(-1,0,1));LinearLayout send=new LinearLayout(this);EditText e=input("Message");send.addView(e,new LinearLayout.LayoutParams(0,58,1));Button s=btn("Send");send.addView(s,new LinearLayout.LayoutParams(82,58));content.addView(send);
+        Runnable refresh=()->api("/messages?conversationId="+cid,"GET",null,r->{msgs.removeAllViews();if(!r.ok)return;JSONArray a=r.data.optJSONArray("messages");if(a!=null)for(int i=0;i<a.length();i++){JSONObject m=a.optJSONObject(i);boolean mine=meId.equals(m.optString("senderId"));TextView t=tv(m.optString("body"),16,TEXT);t.setPadding(16,12,16,12);t.setBackground(bg(mine?ACCENT:CARD,22));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-2,-2);p.gravity=mine?Gravity.RIGHT:Gravity.LEFT;p.setMargins(0,4,0,4);msgs.addView(t,p);}sc.post(()->sc.fullScroll(View.FOCUS_DOWN));});refresh.run();handler.postDelayed(()->{if(currentConversation.equals(cid))refresh.run();},2500);s.setOnClickListener(v->{String text=e.getText().toString().trim();if(text.isEmpty())return;JSONObject j=new JSONObject();try{j.put("conversationId",cid);j.put("body",text);}catch(Exception ignored){}e.setText("");api("/messages","POST",j,r->{if(!r.ok)toast(r.error);else refresh.run();});});}
+    private void loadStatus(){TextView h=tv("Status",28,TEXT);h.setTypeface(null,1);content.addView(h);content.addView(tv("Post a photo, video or text update. See viewers and view times.",16,MUTED));Button add=btn("＋ Add status");content.addView(add,new LinearLayout.LayoutParams(-1,58));add.setOnClickListener(v->toast("Status composer is ready; publishing/viewer analytics need the status API and media storage."));content.addView(tv("Your status viewers will appear here.",15,TEXT));}
+    private void loadCalls(){TextView h=tv("Calls",28,TEXT);h.setTypeface(null,1);content.addView(h);content.addView(tv("Voice and video calling",16,MUTED));content.addView(tv("No recent calls",17,TEXT));}
+    private void loadDiscover(){TextView h=tv("Discover",28,TEXT);h.setTypeface(null,1);content.addView(h);EditText q=input("Search @username or name");content.addView(q);Button b=btn("Search");content.addView(b,new LinearLayout.LayoutParams(-1,56));TextView out=tv("Find people and start a conversation.",15,MUTED);content.addView(out);b.setOnClickListener(v->api("/search?q="+q.getText().toString().trim(),"GET",null,r->out.setText(r.ok?r.data.toString():r.error)));}
+    private void loadSettings(){TextView h=tv("Settings",28,TEXT);h.setTypeface(null,1);content.addView(h);content.addView(tv("Account\n@"+meUsername+"\n\nPrivacy & security\n• Online status\n• Read receipts\n• Biometric app lock\n\nNotifications\n• Messages\n• Calls\n• Status views",16,TEXT));Button lock=btn("Enable fingerprint / device lock");content.addView(lock,new LinearLayout.LayoutParams(-1,58));lock.setOnClickListener(v->biometric());Button out=btn("Sign out");content.addView(out,new LinearLayout.LayoutParams(-1,58));out.setOnClickListener(v->api("/auth/logout","POST",null,r->showAuth(false)));}
+    private void biometric(){if(BiometricManager.from(this).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG|BiometricManager.Authenticators.DEVICE_CREDENTIAL)!=BiometricManager.BIOMETRIC_SUCCESS){toast("Set a fingerprint, face or device PIN first.");return;}BiometricPrompt p=new BiometricPrompt(this,ContextCompat.getMainExecutor(this),new BiometricPrompt.AuthenticationCallback(){@Override public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult r){getPreferences(0).edit().putBoolean("lock",true).apply();toast("Biometric lock enabled");}});p.authenticate(new BiometricPrompt.PromptInfo.Builder().setTitle("Unlock OLUNAA").setSubtitle("Protect this app").setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG|BiometricManager.Authenticators.DEVICE_CREDENTIAL).build());}
+    private void newChat(){LinearLayout b=new LinearLayout(this);b.setOrientation(LinearLayout.VERTICAL);EditText q=input("Username, e.g. @anas");b.addView(q);new AlertDialog.Builder(this).setTitle("Start a new chat").setView(b).setPositiveButton("Find",(d,w)->{content.removeAllViews();title.setText("Discover");loadDiscover();}).setNegativeButton("Cancel",null).show();}
+    private void api(String path,String method,JSONObject body,java.util.function.Consumer<Result> cb){io.execute(()->{Result out=new Result();try{HttpURLConnection c=(HttpURLConnection)new URL(API+path).openConnection();c.setRequestMethod(method);c.setConnectTimeout(12000);c.setReadTimeout(12000);c.setRequestProperty("Accept","application/json");if(body!=null){c.setDoOutput(true);c.setRequestProperty("Content-Type","application/json");try(OutputStream os=c.getOutputStream()){os.write(body.toString().getBytes("UTF-8"));}}int code=c.getResponseCode();InputStream is=code>=400?c.getErrorStream():c.getInputStream();String text=read(is);out.code=code;out.ok=code>=200&&code<300;out.data=new JSONObject(text);out.error=out.data.optString("error","");}catch(Exception e){out.ok=false;out.error=e.getMessage()==null?"Network error":e.getMessage();}runOnUiThread(()->cb.accept(out));});}
+    private String read(InputStream in)throws Exception{if(in==null)return"{}";BufferedReader r=new BufferedReader(new InputStreamReader(in));StringBuilder s=new StringBuilder();String l;while((l=r.readLine())!=null)s.append(l);return s.toString();}
+    private static class Result{boolean ok;int code;String error="";JSONObject data=new JSONObject();}
+    private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_LONG).show();}
+    @Override protected void onDestroy(){io.shutdownNow();super.onDestroy();}
 }
