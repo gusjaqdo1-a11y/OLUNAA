@@ -216,3 +216,13 @@ model Notification {
   recipient User @relation("recipient", fields: [recipientId], references: [id], onDelete: Cascade)
   actor User? @relation("actor", fields: [actorId], references: [id], onDelete: SetNull)
 }
+
+model TypingState {
+  id String @id @default(cuid()) @map("_id")
+  conversationId String
+  userId String
+  updatedAt DateTime @updatedAt
+  @@unique([conversationId, userId])
+  @@index([conversationId, updatedAt])
+  @@index([updatedAt])
+}
