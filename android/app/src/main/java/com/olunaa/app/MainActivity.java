@@ -42,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
     private static final int BG_L=Color.rgb(246,249,248), SURFACE_L=Color.WHITE, CARD_L=Color.rgb(239,245,242), FIELD_L=Color.rgb(232,240,236), TEXT_L=Color.rgb(20,32,27), MUTED_L=Color.rgb(103,120,111);
     private final ExecutorService io=Executors.newCachedThreadPool();
     private final Handler main=new Handler(Looper.getMainLooper());
+    private final Map<String,Bitmap> imageCache=new ConcurrentHashMap<>();
+    private String lastRenderedMessagesKey="";
     private android.content.SharedPreferences prefs;
     private LinearLayout root, body;
     private String meId="", meUsername="", meName="", meAvatar="", activeConversation="", activeOtherName="", activeOtherAvatar="", activeGroupId="";
@@ -71,8 +73,9 @@ public class MainActivity extends AppCompatActivity {
     private ImageView logo(int size){ImageView im=new ImageView(this);im.setImageResource(R.drawable.ic_olunaa);im.setScaleType(ImageView.ScaleType.CENTER_INSIDE);return im;}
     private ImageView avatar(String url,int size){ImageView im=new ImageView(this);im.setScaleType(ImageView.ScaleType.CENTER_CROP);im.setBackground(rounded(field(),100));im.setContentDescription("Profile photo");im.setPadding(2,2,2,2);if(url!=null&&!url.isEmpty())loadImage(im,url);return im;}
     private void loadImage(ImageView im,String url){
-        if(url.startsWith("data:image")){try{byte[] r=android.util.Base64.decode(url.substring(url.indexOf(',')+1),android.util.Base64.DEFAULT);Bitmap b=BitmapFactory.decodeByteArray(r,0,r.length);if(b!=null)im.setImageBitmap(b);}catch(Exception ignored){}return;}
-        io.execute(()->{try{HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();c.setConnectTimeout(8000);c.setReadTimeout(12000);Bitmap b=BitmapFactory.decodeStream(c.getInputStream());c.disconnect();main.post(()->{if(b!=null)im.setImageBitmap(b);});}catch(Exception ignored){}});
+        Bitmap cached=imageCache.get(url);if(cached!=null){im.setImageBitmap(cached);return;}
+        if(url.startsWith("data:image")){try{byte[] r=android.util.Base64.decode(url.substring(url.indexOf(',')+1),android.util.Base64.DEFAULT);Bitmap b=BitmapFactory.decodeByteArray(r,0,r.length);if(b!=null){imageCache.put(url,b);im.setImageBitmap(b);}}catch(Exception ignored){}return;}
+        io.execute(()->{try{HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();c.setConnectTimeout(8000);c.setReadTimeout(12000);Bitmap b=BitmapFactory.decodeStream(c.getInputStream());c.disconnect();main.post(()->{if(b!=null){imageCache.put(url,b);im.setImageBitmap(b);}});}catch(Exception ignored){}});
     }
     @Override public void onCreate(Bundle b){
         super.onCreate(b);WindowCompat.enableEdgeToEdge(getWindow());getWindow().setStatusBarColor(Color.TRANSPARENT);getWindow().setNavigationBarColor(Color.TRANSPARENT);prefs=getSharedPreferences("olunaa_session",MODE_PRIVATE);
@@ -181,26 +184,26 @@ public class MainActivity extends AppCompatActivity {
 
     private void openChat(String id,String name,String av){openChat(id,name,av,false);}
     private void openChat(String id,String name,String av,boolean isGroup){
-        activeConversation=id;activeOtherName=name;activeOtherAvatar=av;stopPoll();stopChatRealtime();rootBase();
+        activeConversation=id;activeOtherName=name;activeOtherAvatar=av;lastRenderedMessagesKey="";stopPoll();stopChatRealtime();rootBase();
         LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);top.setPadding(dp(2),dp(5),dp(2),dp(8));top.setBackground(gradient(Color.rgb(9,47,34),Color.rgb(7,25,22),dp(22)));
         TextView back=tv("‹",34,text());back.setGravity(Gravity.CENTER);top.addView(back,new LinearLayout.LayoutParams(dp(40),dp(54)));
         ImageView img=avatar(av,1);top.addView(img,new LinearLayout.LayoutParams(dp(46),dp(46)));
         LinearLayout title=new LinearLayout(this);title.setOrientation(LinearLayout.VERTICAL);title.setPadding(dp(9),0,0,0);
         TextView n=tv(name,16,text());n.setTypeface(null,1);title.addView(n);chatPresence=tv(isGroup?"Group conversation":"Checking status…",11,GREEN);title.addView(chatPresence);
         top.addView(title,new LinearLayout.LayoutParams(0,dp(54),1));
-        TextView voice=tv("Call",12,GREEN),video=tv("Video",12,GREEN);voice.setGravity(Gravity.CENTER);video.setGravity(Gravity.CENTER);
+        TextView voice=tv("☎",21,GREEN),video=tv("▣",20,GREEN);voice.setGravity(Gravity.CENTER);video.setGravity(Gravity.CENTER);
         voice.setContentDescription("Start voice call");video.setContentDescription("Start video call");
-        top.addView(voice,new LinearLayout.LayoutParams(dp(42),dp(54)));top.addView(video,new LinearLayout.LayoutParams(dp(42),dp(54)));if(isGroup){TextView members=tv("Members",10,GREEN);members.setGravity(Gravity.CENTER);top.addView(members,new LinearLayout.LayoutParams(dp(58),dp(54)));members.setOnClickListener(v->showGroupMembers(activeGroupId));}root.addView(top,lp(dp(64),dp(7)));
+        top.addView(voice,new LinearLayout.LayoutParams(dp(42),dp(54)));top.addView(video,new LinearLayout.LayoutParams(dp(42),dp(54)));if(isGroup){TextView members=tv("☷",19,GREEN);members.setGravity(Gravity.CENTER);top.addView(members,new LinearLayout.LayoutParams(dp(58),dp(54)));members.setOnClickListener(v->showGroupMembers(activeGroupId));}root.addView(top,lp(dp(64),dp(7)));
         ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.setSmoothScrollingEnabled(true);sc.setOverScrollMode(View.OVER_SCROLL_NEVER);
         LinearLayout messages=new LinearLayout(this);messages.setOrientation(LinearLayout.VERTICAL);messages.setPadding(dp(5),dp(12),dp(5),dp(14));sc.addView(messages);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
         chatReplyHint=tv("",11,GREEN);chatReplyHint.setPadding(dp(12),dp(6),dp(12),dp(6));chatReplyHint.setVisibility(View.GONE);root.addView(chatReplyHint,lp(-2,0));
         LinearLayout composer=new LinearLayout(this);composer.setGravity(Gravity.CENTER_VERTICAL);composer.setPadding(dp(5),dp(6),dp(5),dp(6));composer.setBackground(gradient(Color.rgb(17,39,31),Color.rgb(9,25,21),dp(25)));
-        TextView attach=tv("Attach",11,GREEN);attach.setGravity(Gravity.CENTER);composer.addView(attach,new LinearLayout.LayoutParams(dp(38),dp(50)));
+        TextView attach=tv("＋",24,GREEN);attach.setGravity(Gravity.CENTER);composer.addView(attach,new LinearLayout.LayoutParams(dp(38),dp(50)));
         EditText textBox=input("Message OLUNAA…");textBox.setSingleLine(true);textBox.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
         composer.addView(textBox,new LinearLayout.LayoutParams(0,dp(50),1));
         textBox.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence x,int st,int c,int a){}public void onTextChanged(CharSequence x,int st,int before,int count){if(typingDebounce!=null)main.removeCallbacks(typingDebounce);String value=x.toString().trim();typingDebounce=()->setTyping(!value.isEmpty());main.postDelayed(typingDebounce,450);}public void afterTextChanged(android.text.Editable e){}});
-        TextView camera=tv("Camera",11,GREEN);camera.setGravity(Gravity.CENTER);composer.addView(camera,new LinearLayout.LayoutParams(dp(38),dp(50)));
-        TextView send=tv("Send",12,Color.WHITE);send.setGravity(Gravity.CENTER);send.setBackground(gradient(GREEN2,Color.rgb(29,157,255),dp(50)));composer.addView(send,new LinearLayout.LayoutParams(dp(46),dp(46)));root.addView(composer,lp(dp(60),dp(4)));
+        TextView camera=tv("▣",20,GREEN);camera.setGravity(Gravity.CENTER);composer.addView(camera,new LinearLayout.LayoutParams(dp(38),dp(50)));
+        TextView send=tv("➤",20,Color.WHITE);send.setGravity(Gravity.CENTER);send.setBackground(gradient(GREEN2,Color.rgb(29,157,255),dp(50)));composer.addView(send,new LinearLayout.LayoutParams(dp(46),dp(46)));root.addView(composer,lp(dp(60),dp(4)));
         back.setOnClickListener(v->showHome("Chats"));attach.setOnClickListener(v->{mediaMode=3;pickImage();});camera.setOnClickListener(v->{mediaMode=3;pickImage();});
         send.setOnClickListener(v->sendMessage(textBox,messages));textBox.setOnEditorActionListener((v,a,e)->{if(a==android.view.inputmethod.EditorInfo.IME_ACTION_SEND){sendMessage(textBox,messages);return true;}return false;});
         voice.setOnClickListener(v->callNotice(false));video.setOnClickListener(v->callNotice(true));
@@ -210,7 +213,7 @@ public class MainActivity extends AppCompatActivity {
     private void startChatRealtime(String conversationId,LinearLayout messageList){try{stopChatRealtime();ClientOptions options=new ClientOptions();options.authUrl=API+"/realtime/token?conversationId="+URLEncoder.encode(conversationId,StandardCharsets.UTF_8);options.authMethod="GET";String cookies=prefs.getString("cookies","");if(!cookies.isEmpty())options.authHeaders=new Param[]{new Param("Cookie",cookies)};options.clientId=meId;chatRealtimeClient=new AblyRealtime(options);chatRealtimeChannel=chatRealtimeClient.channels.get("conversation:"+conversationId);chatRealtimeChannel.subscribe(event->{if("message:new".equals(event.name))main.post(()->{if(conversationId.equals(activeConversation))loadMessages(messageList);});});}catch(Exception e){android.util.Log.w("OLUNAA","Realtime chat unavailable; polling fallback remains active",e);}}
     private void setTyping(boolean typing){if(activeConversation.isEmpty())return;JSONObject j=new JSONObject();try{j.put("conversationId",activeConversation);j.put("typing",typing);}catch(Exception ignored){}api("/typing","POST",j,r->{});}
     private void refreshChatPresence(){if(activeConversation.isEmpty())return;api("/typing?conversationId="+URLEncoder.encode(activeConversation,StandardCharsets.UTF_8),"GET",null,r->{if(!r.ok||chatPresence==null)return;JSONArray a=r.data.optJSONArray("typing");if(a!=null&&a.length()>0){JSONObject u=a.optJSONObject(0);chatPresence.setText((u==null?"Someone":u.optString("displayName","Someone"))+" is typing…");}else api("/conversations","GET",null,c->{if(!c.ok||chatPresence==null)return;JSONArray rows=c.data.optJSONArray("conversations");if(rows==null)return;for(int i=0;i<rows.length();i++){JSONObject row=rows.optJSONObject(i);if(row!=null&&activeConversation.equals(row.optString("id"))){JSONObject other=row.optJSONObject("other");if(other!=null){chatPresence.setText(other.optBoolean("online",false)?"Online":(other.optString("lastSeen","").isEmpty()?"Offline":"Last seen recently"));return;}}}chatPresence.setText("OLUNAA chat");});});}
-    private void loadMessages(LinearLayout list){api("/messages?conversationId="+URLEncoder.encode(activeConversation,StandardCharsets.UTF_8),"GET",null,r->{if(!r.ok)return;JSONArray a=r.data.optJSONArray("messages");if(a==null)return;list.removeAllViews();for(int i=0;i<a.length();i++){JSONObject m=a.optJSONObject(i);if(m!=null)bubble(list,m);}refreshChatPresence();list.postDelayed(()->{ScrollView parent=findScroll(list);if(parent!=null)parent.fullScroll(View.FOCUS_DOWN);},80);});}
+    private void loadMessages(LinearLayout list){api("/messages?conversationId="+URLEncoder.encode(activeConversation,StandardCharsets.UTF_8),"GET",null,r->{if(!r.ok)return;JSONArray a=r.data.optJSONArray("messages");if(a==null)return;String snapshot=a.toString();if(snapshot.equals(lastRenderedMessagesKey)){refreshChatPresence();return;}lastRenderedMessagesKey=snapshot;list.removeAllViews();for(int i=0;i<a.length();i++){JSONObject m=a.optJSONObject(i);if(m!=null)bubble(list,m);}refreshChatPresence();list.postDelayed(()->{ScrollView parent=findScroll(list);if(parent!=null)parent.fullScroll(View.FOCUS_DOWN);},80);});}
     private ScrollView findScroll(View v){View p=v;while(p.getParent() instanceof View){p=(View)p.getParent();if(p instanceof ScrollView)return (ScrollView)p;}return null;}
     private void bubble(LinearLayout list,JSONObject m){
         boolean mine=meId.equals(m.optString("senderId"));LinearLayout wrap=new LinearLayout(this);wrap.setOrientation(LinearLayout.VERTICAL);wrap.setGravity(mine?Gravity.RIGHT:Gravity.LEFT);
