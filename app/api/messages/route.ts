@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   const message = await db.message.create({ data: { conversationId, senderId: me.id, body: text, mediaUrl, mediaType, deliveredAt: new Date(), forwarded, ...replyData } });
   await db.conversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
   const recipients = await db.conversationMember.findMany({ where: { conversationId, userId: { not: me.id } }, select: { userId: true } });
-  if (recipients.length) await db.notification.createMany({ data: recipients.map(x => ({ recipientId: x.userId, actorId: me.id, type: "message", body: text || (mediaType === "video" ? "Sent a video" : "Sent a photo") })) });
+  if (recipients.length) await db.notification.createMany({ data: recipients.map(x => ({ recipientId: x.userId, actorId: me.id, type: "message", body: text || (mediaType === "video" ? "Sent a video" : "Sent a photo") })) });\n  await sendPushToUsers(recipients.map(x => x.userId), { title: me.displayName, body: text || (mediaType === "video" ? "Sent a video" : "Sent a photo"), data: { type: "message", conversationId } });
   try { await publishConversationEvent(conversationId, "message:new", { message, conversationId }); } catch (error) { console.error("Ably message publish failed", error); }
   return NextResponse.json({ message }, { status: 201 });
 }
