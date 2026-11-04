@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import Ably from "ably";
+import * as Ably from "ably";
 import { getCurrentUser } from "../../../../lib/auth";
 import { isConversationMember } from "../../../../lib/realtime";
 
