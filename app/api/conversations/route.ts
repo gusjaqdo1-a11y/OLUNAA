@@ -7,7 +7,8 @@ export const runtime = "nodejs";
 export async function GET() {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  await db.user.update({ where: { id: me.id }, data: { lastActiveAt: new Date() } });\n  const rows = await db.conversation.findMany({ where: { members: { some: { userId: me.id } } }, include: { members: { include: { user: { select: { id: true, username: true, displayName: true, avatarUrl: true, lastActiveAt: true, settings: true } } } }, messages: { orderBy: { createdAt: "desc" }, take: 1 } }, orderBy: { updatedAt: "desc" }, take: 100 });
+  await db.user.update({ where: { id: me.id }, data: { lastActiveAt: new Date() } });
+  const rows = await db.conversation.findMany({ where: { members: { some: { userId: me.id } } }, include: { members: { include: { user: { select: { id: true, username: true, displayName: true, avatarUrl: true, lastActiveAt: true, settings: true } } } }, messages: { orderBy: { createdAt: "desc" }, take: 1 } }, orderBy: { updatedAt: "desc" }, take: 100 });
   const conversations = rows.map(c => {
     const other = c.members.find(m => m.userId !== me.id)?.user;
     const last = c.messages[0];
