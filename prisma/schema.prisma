@@ -33,7 +33,8 @@ model User {
   sentMessages        Message[]            @relation("sent")
   channelMembers      ChannelMember[]
   channelMessages     ChannelMessage[]
-  settings             UserSettings?\n  deviceTokens         DeviceToken[]
+  settings             UserSettings?
+  deviceTokens         DeviceToken[]
 }
 
 model UserSettings {
