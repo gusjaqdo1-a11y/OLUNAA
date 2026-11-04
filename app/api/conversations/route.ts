@@ -7,11 +7,11 @@ export const runtime = "nodejs";
 export async function GET() {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const rows = await db.conversation.findMany({ where: { members: { some: { userId: me.id } } }, include: { members: { include: { user: { select: { id: true, username: true, displayName: true, avatarUrl: true, lastActiveAt: true, settings: true } } } }, messages: { orderBy: { createdAt: "desc" }, take: 1 } }, orderBy: { updatedAt: "desc" }, take: 100 });
+  await db.user.update({ where: { id: me.id }, data: { lastActiveAt: new Date() } });\n  const rows = await db.conversation.findMany({ where: { members: { some: { userId: me.id } } }, include: { members: { include: { user: { select: { id: true, username: true, displayName: true, avatarUrl: true, lastActiveAt: true, settings: true } } } }, messages: { orderBy: { createdAt: "desc" }, take: 1 } }, orderBy: { updatedAt: "desc" }, take: 100 });
   const conversations = rows.map(c => {
     const other = c.members.find(m => m.userId !== me.id)?.user;
     const last = c.messages[0];
-    return { id: c.id, type: c.type, other: other ? { ...other, online: !!other.settings?.showOnlineStatus && Date.now() - other.lastActiveAt.getTime() < 45000 } : null, lastMessage: last ? { id: last.id, body: last.body, senderId: last.senderId, createdAt: last.createdAt, deliveredAt: last.deliveredAt, seenAt: last.seenAt } : null };
+    return { id: c.id, type: c.type, other: other ? { id: other.id, username: other.username, displayName: other.displayName, avatarUrl: other.avatarUrl, online: other.settings?.showOnlineStatus !== false && Date.now() - other.lastActiveAt.getTime() < 45000, lastSeen: other.settings?.showLastSeen !== false ? other.lastActiveAt : null } : null, lastMessage: last ? { id: last.id, body: last.body, senderId: last.senderId, createdAt: last.createdAt, deliveredAt: last.deliveredAt, seenAt: last.seenAt } : null };
   });
   return NextResponse.json({ conversations });
 }
