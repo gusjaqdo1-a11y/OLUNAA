@@ -2,6 +2,7 @@ import java.security.SecureRandom
 
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.android")
 }
 
 android {
@@ -26,6 +27,8 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("androidx.activity:activity:1.10.1")
     implementation("androidx.biometric:biometric:1.4.0-alpha04")
+    implementation("io.livekit:livekit-android:2.30.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
 }
 
 tasks.register("normalizeInsetsSource") {
