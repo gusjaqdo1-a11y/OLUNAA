@@ -19,7 +19,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params; const { membership, conversation } = await context(id, me.id);
   if (!membership || !["owner","admin"].includes(membership.role)) return NextResponse.json({ error: "Only group owners and admins can invite members." }, { status: 403 });
   const body = await req.json().catch(() => ({}));
-  const rawUserIds: unknown[] = Array.isArray(body.userIds) ? body.userIds as unknown[] : [];\n  const ids = [...new Set<string>(rawUserIds.filter((x): x is string => typeof x === "string" && x.length > 0))].slice(0, 100);
+  const rawUserIds: unknown[] = Array.isArray(body.userIds) ? body.userIds as unknown[] : [];
+  const ids = [...new Set<string>(rawUserIds.filter((x): x is string => typeof x === "string" && x.length > 0))].slice(0, 100);
   if (!ids.length) return NextResponse.json({ error: "Choose at least one user." }, { status: 400 });
   const users = await db.user.findMany({ where: { id: { in: ids } }, select: { id: true } });
   let conversationId = conversation?.id;
