@@ -31,7 +31,10 @@
             </intent-filter>
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>
-        <service android:name=".OlunaaMessagingService" android:exported="false">\n            <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>\n        </service>\n        <activity android:name=".LiveKitCallActivity" android:exported="false" android:screenOrientation="unspecified" />
+        <service android:name=".OlunaaMessagingService" android:exported="false">
+            <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>
+        </service>
+        <activity android:name=".LiveKitCallActivity" android:exported="false" android:screenOrientation="unspecified" />
         <activity android:name=".AdminActivity" android:exported="true" android:screenOrientation="unspecified" />
     </application>
 </manifest>
