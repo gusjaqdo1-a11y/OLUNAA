@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../lib/db";
 import { getCurrentUser } from "../../../lib/auth";
+import { publishConversationEvent } from "../../../lib/realtime";
 export const runtime = "nodejs";
 export async function GET(req: Request) {
   const me = await getCurrentUser();
@@ -40,5 +41,6 @@ export async function POST(req: Request) {
   await db.conversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
   const recipients = await db.conversationMember.findMany({ where: { conversationId, userId: { not: me.id } }, select: { userId: true } });
   if (recipients.length) await db.notification.createMany({ data: recipients.map(x => ({ recipientId: x.userId, actorId: me.id, type: "message", body: text || (mediaType === "video" ? "Sent a video" : "Sent a photo") })) });
+  try { await publishConversationEvent(conversationId, "message:new", { message, conversationId }); } catch (error) { console.error("Ably message publish failed", error); }
   return NextResponse.json({ message }, { status: 201 });
 }
