@@ -30,6 +30,8 @@ dependencies {
     implementation("io.livekit:livekit-android:2.30.0")
     implementation("io.ably:ably-java:1.8.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
+    implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
+    implementation("com.google.firebase:firebase-messaging")
 }
 
 tasks.register("normalizeInsetsSource") {
@@ -70,3 +72,5 @@ val generateMediaPack = tasks.register("generateMediaPack") {
 }
 
 tasks.named("preBuild") { dependsOn(generateMediaPack) }
+
+if (file("google-services.json").exists()) {\n    apply(plugin = "com.google.gms.google-services")\n}\n
