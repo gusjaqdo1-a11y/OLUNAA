@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   const key = process.env.ABLY_API_KEY;
   if (!key) return NextResponse.json({ error: "Realtime service is not configured yet." }, { status: 503 });
   const body = await req.json().catch(() => ({}));
-  const conversationId = typeof body.conversationId === "string" ? body.conversationId : "";
+  const conversationId = typeof body.conversationId === "string" ? body.conversationId : new URL(req.url).searchParams.get("conversationId") || "";
   if (!conversationId || !(await isConversationMember(conversationId, me.id))) {
     return NextResponse.json({ error: "Conversation not found." }, { status: 403 });
   }
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       capability: JSON.stringify(capability),
       ttl: 60 * 60 * 1000,
     });
-    return NextResponse.json({ tokenRequest, clientId: me.id });
+    return NextResponse.json(tokenRequest);
   } catch {
     return NextResponse.json({ error: "Could not create realtime credentials." }, { status: 502 });
   }
