@@ -105,6 +105,10 @@ model Message {
   body String
   mediaUrl String?
   mediaType String?
+  replyToId String?
+  replyToBody String?
+  replyToSender String?
+  forwarded Boolean @default(false)
   deliveredAt DateTime?
   seenAt DateTime?
   createdAt DateTime @default(now())
