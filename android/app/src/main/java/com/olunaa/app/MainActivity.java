@@ -146,12 +146,12 @@ public class MainActivity extends AppCompatActivity {
         EditText name=input("Group name");EditText handle=input("Group username (e.g. friends2026)");EditText desc=input("Group description");
         form.addView(name,lp(dp(52),dp(7)));form.addView(handle,lp(dp(52),dp(7)));form.addView(desc,lp(dp(52),dp(7)));
         ArrayList<String> selectedIds=new ArrayList<>();TextView selected=tv("＋  Add members  ·  No members selected",13,GREEN);selected.setGravity(Gravity.CENTER_VERTICAL);selected.setPadding(dp(12),0,dp(12),0);selected.setBackground(rounded(card(),dp(14)));form.addView(selected,lp(dp(48),dp(7)));
-        TextView privacy=tv("🔒  Group privacy: Private invite-only",12,muted());privacy.setPadding(dp(4),dp(6),0,dp(4));form.addView(privacy,lp(dp(34),0));
+        TextView privacyTitle=tv("Group privacy",12,muted());form.addView(privacyTitle,lp(dp(26),0));Spinner privacy=new Spinner(this);String[] privacyOptions={"Private — invite-only","Public — discoverable by everyone"};privacy.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,privacyOptions));form.addView(privacy,lp(dp(48),dp(5)));
         selected.setOnClickListener(v->showGroupInvitePicker(selectedIds,selected));
         new AlertDialog.Builder(this).setTitle("Create your group").setMessage("Set up your group, then choose people to add.").setView(form).setNegativeButton("Cancel",null).setPositiveButton("Create group",(d,w)->{
             String groupName=name.getText().toString().trim(),groupHandle=handle.getText().toString().trim();
             if(groupName.length()<2||groupHandle.replaceFirst("^@","").length()<3){message("Enter a group name and a username with at least 3 characters.");return;}
-            JSONObject payload=new JSONObject();try{payload.put("name",groupName);payload.put("handle",groupHandle.replaceFirst("^@",""));payload.put("description",desc.getText().toString().trim());payload.put("memberIds",new JSONArray(selectedIds));}catch(Exception ignored){}
+            JSONObject payload=new JSONObject();try{payload.put("name",groupName);payload.put("handle",groupHandle.replaceFirst("^@",""));payload.put("description",desc.getText().toString().trim());payload.put("memberIds",new JSONArray(selectedIds));payload.put("privacy",privacy.getSelectedItemPosition()==1?"public":"private");}catch(Exception ignored){}
             api("/groups","POST",payload,r->{if(!r.ok){message(r.error);return;}JSONObject g=r.data.optJSONObject("group");if(g==null){message("Group created, but could not open it.");return;}activeGroupId=g.optString("id","");String cid=g.optString("conversationId","");if(cid.isEmpty()){message("Group created. Reopen Messages to join.");showHome("Chats");return;}openChat(cid,g.optString("name","Group"),g.optString("avatarUrl",""),true);});
         }).show();
     }
