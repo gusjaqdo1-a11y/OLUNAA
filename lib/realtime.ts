@@ -1,4 +1,4 @@
-import Ably from "ably";
+import * as Ably from "ably";
 import { db } from "./db";
 
 export async function publishConversationEvent(conversationId: string, name: string, data: unknown) {
