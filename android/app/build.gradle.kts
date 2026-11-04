@@ -73,4 +73,6 @@ val generateMediaPack = tasks.register("generateMediaPack") {
 
 tasks.named("preBuild") { dependsOn(generateMediaPack) }
 
-if (file("google-services.json").exists()) {\n    apply(plugin = "com.google.gms.google-services")\n}\n
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}\n
