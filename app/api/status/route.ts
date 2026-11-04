@@ -12,6 +12,7 @@ export async function POST(req: Request) {
   const me = await getCurrentUser(); if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { mediaUrl, caption, expiresHours = 24 } = await req.json().catch(() => ({}));
   if (!mediaUrl) return NextResponse.json({ error: "mediaUrl is required" }, { status: 400 });
+  if (String(mediaUrl).length > 3500000) return NextResponse.json({ error: "Media is too large. Choose a shorter video or smaller photo." }, { status: 413 });
   const allowedHours = [1, 6, 12, 24, 48, 72, 168];
   const requestedHours = Number(expiresHours) || 24;
   const hours = allowedHours.includes(requestedHours) ? requestedHours : 24;
