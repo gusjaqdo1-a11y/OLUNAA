@@ -75,4 +75,4 @@ tasks.named("preBuild") { dependsOn(generateMediaPack) }
 
 if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
-}\n
+}
