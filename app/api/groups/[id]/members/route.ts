@@ -41,3 +41,17 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   if (conversation) await db.conversationMember.deleteMany({ where: { conversationId: conversation.id, userId: String(userId) } });
   return NextResponse.json({ removed: true });
 }
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const me = await getCurrentUser(); if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id } = await params;
+  const owner = await db.groupMember.findUnique({ where: { groupId_userId: { groupId: id, userId: me.id } } });
+  if (!owner || owner.role !== "owner") return NextResponse.json({ error: "Only the group owner can manage admins." }, { status: 403 });
+  const body = await req.json().catch(() => ({}));
+  const userId = String(body.userId || "");
+  const role = body.role === "admin" ? "admin" : "member";
+  if (!userId || userId === me.id) return NextResponse.json({ error: "Choose a group member." }, { status: 400 });
+  const target = await db.groupMember.findUnique({ where: { groupId_userId: { groupId: id, userId } } });
+  if (!target || target.role === "owner") return NextResponse.json({ error: "That member cannot be changed." }, { status: 404 });
+  await db.groupMember.update({ where: { groupId_userId: { groupId: id, userId } }, data: { role } });
+  return NextResponse.json({ updated: true, userId, role });
+}
