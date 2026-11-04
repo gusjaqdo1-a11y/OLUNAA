@@ -51,8 +51,8 @@ public class MainActivity extends AppCompatActivity {
     private int mediaMode=0;
     private Runnable poller,typingDebounce;
     private TextView chatPresence,chatReplyHint;
-    private AblyRealtime realtimeClient;
-    private Channel incomingCallChannel;
+    private AblyRealtime realtimeClient,chatRealtimeClient;
+    private Channel incomingCallChannel,chatRealtimeChannel;
     private String pendingReplyId="",pendingReplyBody="",pendingReplySender="";
 
     private int bg(){return dark?BG_D:BG_L;} private int surface(){return dark?SURFACE_D:SURFACE_L;}
