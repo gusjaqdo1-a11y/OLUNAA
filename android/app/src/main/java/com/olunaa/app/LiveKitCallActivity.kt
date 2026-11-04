@@ -19,6 +19,7 @@ import io.livekit.android.renderer.SurfaceViewRenderer
 import io.livekit.android.room.Room
 import io.livekit.android.room.track.VideoTrack
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 
 class LiveKitCallActivity : AppCompatActivity() {
@@ -86,7 +87,9 @@ class LiveKitCallActivity : AppCompatActivity() {
         room.initVideoRenderer(video)
         lifecycleScope.launch {
             launch {
-                room.events.collect { event ->
+                @Suppress("UNCHECKED_CAST")
+                val eventFlow = room.events as Flow<RoomEvent>
+                eventFlow.collect { event ->
                     when (event) {
                         is RoomEvent.TrackSubscribed -> { val track = event.track; if (track is VideoTrack) track.addRenderer(video) }
                         is RoomEvent.ParticipantConnected -> runOnUiThread { status.text = "Connected · " + (event.participant.name.orEmpty().ifBlank { "OLUNAA user" }) }
