@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   const member = await db.conversationMember.findUnique({ where: { conversationId_userId: { conversationId: id, userId: me.id } } });
   if (!member) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await db.message.updateMany({ where: { conversationId: id, senderId: { not: me.id }, seenAt: null }, data: { seenAt: new Date(), deliveredAt: new Date() } });
-  const messages = await db.message.findMany({ where: { conversationId: id }, orderBy: { createdAt: "asc" }, take: 500 });
+  const messages = await db.message.findMany({ where: { conversationId: id }, orderBy: { createdAt: "asc" }, take: 500, include: { reactions: { select: { emoji: true, userId: true } } } });
   return NextResponse.json({ messages });
 }
 
