@@ -28,6 +28,7 @@ dependencies {
     implementation("androidx.activity:activity:1.10.1")
     implementation("androidx.biometric:biometric:1.4.0-alpha04")
     implementation("io.livekit:livekit-android:2.30.0")
+    implementation("io.ably:ably-java:1.8.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
 }
 
