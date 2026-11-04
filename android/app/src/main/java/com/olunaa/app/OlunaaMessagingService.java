@@ -48,10 +48,10 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
                 ? message.getNotification().getTitle() : "OLUNAA";
         String body = message.getNotification() != null && message.getNotification().getBody() != null
                 ? message.getNotification().getBody() : "You have a new notification";
-        showNotification(title, body);
+        showNotification(title, body, message.getData());
     }
 
-    private void showNotification(String title, String body) {
+    private void showNotification(String title, String body, java.util.Map<String, String> data) {
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager == null) return;
         if (Build.VERSION.SDK_INT >= 26) {
@@ -60,7 +60,7 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
             manager.createNotificationChannel(channel);
         }
         Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);\n        if (data != null) for (java.util.Map.Entry<String, String> entry : data.entrySet()) intent.putExtra(entry.getKey(), entry.getValue());
         PendingIntent pending = PendingIntent.getActivity(this, 7001, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
         Notification.Builder builder = Build.VERSION.SDK_INT >= 26
