@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const name = String(body.name || "").trim().slice(0, 80);
   const handle = String(body.handle || "").replace(/^@/, "").toLowerCase();
   const description = String(body.description || "").trim().slice(0, 500);
-  const inviteIds = Array.isArray(body.memberIds) ? [...new Set(body.memberIds.map((x: unknown) => String(x)).filter(Boolean))].slice(0, 99) : [];
+  const inviteIds: string[] = Array.isArray(body.memberIds) ? [...new Set(body.memberIds.filter((x: unknown): x is string => typeof x === "string" && x.length > 0))].slice(0, 99) : [];
   if (name.length < 2 || !/^[a-z0-9_]{3,30}$/.test(handle)) return NextResponse.json({ error: "Enter a group name and a 3-30 character handle." }, { status: 400 });
   if (await db.group.findUnique({ where: { handle }, select: { id: true } })) return NextResponse.json({ error: "That group handle is already taken." }, { status: 409 });
   const validUsers = await db.user.findMany({ where: { id: { in: inviteIds } }, select: { id: true } });
