@@ -25,6 +25,7 @@ export async function POST(req: Request) {
   const name = String(body.name || "").trim().slice(0, 80);
   const handle = String(body.handle || "").replace(/^@/, "").toLowerCase();
   const description = String(body.description || "").trim().slice(0, 500);
+  const privacy = body.privacy === "public" ? "public" : "private";
   const rawMemberIds: unknown[] = Array.isArray(body.memberIds) ? body.memberIds as unknown[] : [];
   const inviteIds = [...new Set<string>(rawMemberIds.filter((x): x is string => typeof x === "string" && x.length > 0))].slice(0, 99);
   if (name.length < 2 || !/^[a-z0-9_]{3,30}$/.test(handle)) return NextResponse.json({ error: "Enter a group name and a 3-30 character handle." }, { status: 400 });
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
   const memberIds = [...new Set([me.id, ...validUsers.map(u => u.id)])];
   const group = await db.group.create({
     data: {
-      name, handle, description,
+      name, handle, description, privacy,
       members: { create: memberIds.map((userId, i) => ({ userId, role: userId === me.id ? "owner" : "member" })) },
       conversations: { create: { type: "group", members: { create: memberIds.map(userId => ({ userId })) } } },
     },
