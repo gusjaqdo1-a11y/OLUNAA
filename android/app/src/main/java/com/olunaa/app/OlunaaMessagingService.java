@@ -159,7 +159,6 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
                 .setPriority(incomingCall ? Notification.PRIORITY_MAX : Notification.PRIORITY_HIGH)
                 .setCategory(incomingCall ? Notification.CATEGORY_CALL : Notification.CATEGORY_MESSAGE);
         if (!incomingCall && data != null && "message".equals(data.get("type"))) {
-            String conversationId = data.getOrDefault("conversationId", "");
             if (!conversationId.isEmpty()) {
                 int actionId = conversationId.hashCode();
                 Intent replyIntent = new Intent(this, MessageNotificationActionReceiver.class);
