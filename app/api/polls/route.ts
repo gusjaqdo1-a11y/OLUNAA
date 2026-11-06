@@ -11,9 +11,15 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const conversationId = typeof body.conversationId === "string" ? body.conversationId : "";
   const question = typeof body.question === "string" ? body.question.trim().slice(0, 240) : "";
-  const options = Array.isArray(body.options)
-    ? [...new Set(body.options.filter((x: unknown): x is string => typeof x === "string").map((x: string) => x.trim()).filter(Boolean))].slice(0, 10)
-    : [];
+  const rawOptions: unknown[] = Array.isArray(body.options) ? body.options as unknown[] : [];
+  const normalizedOptions: string[] = [];
+  for (const item of rawOptions) {
+    if (typeof item !== "string") continue;
+    const value = item.trim();
+    if (value && !normalizedOptions.includes(value)) normalizedOptions.push(value);
+    if (normalizedOptions.length === 10) break;
+  }
+  const options: string[] = normalizedOptions;
   if (!conversationId || question.length < 3 || options.length < 2 || options.some((x: string) => x.length > 80)) {
     return NextResponse.json({ error: "A question and at least two options are required." }, { status: 400 });
   }
