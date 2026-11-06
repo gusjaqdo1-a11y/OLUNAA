@@ -9,13 +9,13 @@ import android.view.*;
 import android.widget.*;
 
 public class NeonApp extends Application {
-    private static final int BG = Color.rgb(7, 13, 28);
-    private static final int FIELD = Color.rgb(27, 41, 70);
-    private static final int WHITE = Color.rgb(242, 246, 255);
-    private static final int MUTED = Color.rgb(145, 161, 190);
-    private static final int PURPLE = Color.rgb(67, 139, 255);
-    private static final int MAGENTA = Color.rgb(42, 91, 232);
-    private static final int CYAN = Color.rgb(80, 190, 255);
+    private static final int BG = Color.rgb(4, 10, 23);
+    private static final int FIELD = Color.rgb(15, 31, 53);
+    private static final int WHITE = Color.rgb(241, 248, 255);
+    private static final int MUTED = Color.rgb(145, 171, 199);
+    private static final int BLUE = Color.rgb(22, 111, 226);
+    private static final int AQUA = Color.rgb(25, 190, 213);
+    private static final int ICE = Color.rgb(103, 211, 255);
     private SharedPreferences.OnSharedPreferenceChangeListener tokenListener;
 
     @Override
@@ -47,9 +47,9 @@ public class NeonApp extends Application {
     private GradientDrawable fieldBackground() {
         GradientDrawable drawable = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{FIELD, Color.rgb(13, 22, 43)});
-        drawable.setCornerRadius(24);
-        drawable.setStroke(1, Color.rgb(55, 100, 170));
+                new int[]{FIELD, Color.rgb(7, 17, 33)});
+        drawable.setCornerRadius(20);
+        drawable.setStroke(1, Color.rgb(48, 104, 151));
         return drawable;
     }
 
@@ -76,10 +76,10 @@ public class NeonApp extends Application {
             button.setTextColor(Color.WHITE);
             button.setAllCaps(false);
             GradientDrawable background = new GradientDrawable(
-                    GradientDrawable.Orientation.TL_BR, new int[]{PURPLE, MAGENTA, CYAN});
-            background.setCornerRadius(24);
-            background.setStroke(1, Color.rgb(73, 61, 160));
-            button.setBackground(background);
+                    GradientDrawable.Orientation.TL_BR, new int[]{BLUE, AQUA, ICE});
+            background.setCornerRadius(18);
+            background.setStroke(1, Color.rgb(84, 178, 222));
+            button.setBackground(background);\n            button.setElevation(5f);\n            button.setLetterSpacing(0.01f);
         }
     }
 }
