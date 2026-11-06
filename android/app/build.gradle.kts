@@ -18,8 +18,8 @@ android {
         applicationId = "com.olunaa.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 41
-        versionName = "1.4.1"
+        versionCode = 42
+        versionName = "1.4.2"
     }
     buildTypes {
         release {
