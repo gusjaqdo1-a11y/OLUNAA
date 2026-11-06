@@ -43,7 +43,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   });
   const recipients = isCaller ? call.calleeIds : [call.callerId];
   await Promise.allSettled(recipients.map(userId => publishUserEvent(userId, "call:status", {
-    callId: call.id, conversationId: call.conversationId, status, userId: me.id, updatedAt: updated.updatedAt ?? new Date().toISOString(),
+    callId: call.id, conversationId: call.conversationId, status, userId: me.id, updatedAt: new Date().toISOString(),
   })));
   return NextResponse.json({ call: updated });
 }
