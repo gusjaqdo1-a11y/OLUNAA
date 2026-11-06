@@ -22,9 +22,9 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload) {
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ message: {
           token: device.token,
-          notification: { title: payload.title, body: payload.body },
-          data: payload.data || {},
-          android: { priority: "high", notification: { channel_id: "olunaa_messages", sound: "default" } },
+          // Data-only messages let Android build a rich notification with the sender's avatar.
+          data: { ...(payload.data || {}), title: payload.title, body: payload.body },
+          android: { priority: "high" },
         } }),
       });
       if (!response.ok) throw new Error(`FCM ${response.status}: ${(await response.text()).slice(0, 250)}`);
