@@ -65,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
     private final class LiquidBackground extends Drawable {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
         @Override public void draw(Canvas canvas){
-            Rect bounds=getBounds();float w=bounds.width(),h=bounds.height();
+            Rect bounds=getBounds();float w=bounds.width(),h=bounds.height();if(w<=0f||h<=0f)return;
             int top=dark?Color.rgb(10,8,32):Color.rgb(239,235,255);
             int bottom=dark?Color.rgb(13,20,48):Color.rgb(218,242,255);
             paint.setShader(new LinearGradient(0,0,w,h,top,bottom,Shader.TileMode.CLAMP));
