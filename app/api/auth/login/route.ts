@@ -3,7 +3,6 @@ import bcrypt from "bcryptjs";
 import { db } from "../../../../lib/db";
 import { createSession } from "../../../../lib/auth";
 import { sendPushToUsers } from "../../../../lib/push";
-import { db } from "../../../../lib/db";
 
 export const runtime = "nodejs";
 
