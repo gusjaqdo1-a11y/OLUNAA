@@ -225,7 +225,24 @@ public class MainActivity extends AppCompatActivity {
     private void showCreateInfo(String title,String detail){new AlertDialog.Builder(this).setTitle(title).setMessage(detail).setPositiveButton("OK",null).show();}
     private void heading(String h,String s){TextView a=tv(h,24,text());a.setTypeface(null,1);body.addView(a,lp(-2,dp(3)));body.addView(tv(s,13,muted()),lp(-2,dp(14)));}
     private void cardRow(LinearLayout row){row.setPadding(dp(12),dp(10),dp(12),dp(10));row.setBackground(rounded(card(),dp(20)));body.addView(row,lp(dp(78),dp(7)));}
-    private void loadChats(){final LinearLayout target=body;final int generation=homeGeneration;heading("Your conversations","Private chats and group conversations");api("/conversations","GET",null,r->{if(generation!=homeGeneration||target!=body)return;if(!r.ok){message(r.error);return;}JSONArray a=r.data.optJSONArray("conversations");if(a!=null)for(int i=0;i<a.length();i++){JSONObject c=a.optJSONObject(i),o=c==null?null:c.optJSONObject("other");if(o!=null)chatRow(c,o);}});TextView groupTitle=tv("YOUR GROUPS",11,GREEN);groupTitle.setTypeface(null,1);target.addView(groupTitle,lp(dp(30),dp(15)));api("/groups","GET",null,r->{if(generation!=homeGeneration||target!=body)return;if(!r.ok){message(r.error);return;}JSONArray a=r.data.optJSONArray("groups");if(a==null||a.length()==0){TextView hint=tv("Create a group to start a conversation with several people.",12,muted());target.addView(hint,lp(dp(40),0));return;}for(int i=0;i<a.length();i++){JSONObject g=a.optJSONObject(i);if(g!=null)groupRow(g);}}); }
+    private String chatCacheKey(){return "chats_cache_"+meId;}
+    private String groupCacheKey(){return "groups_cache_"+meId;}
+    private String messageCacheKey(String conversationId){return "messages_cache_"+meId+"_"+conversationId;}
+    private void renderChatRows(LinearLayout target,JSONArray rows){target.removeAllViews();for(int i=0;i<rows.length();i++){JSONObject conversation=rows.optJSONObject(i),other=conversation==null?null:conversation.optJSONObject("other");if(other!=null)chatRow(conversation,other);}}
+    private void renderGroupRows(LinearLayout target,JSONArray rows){target.removeAllViews();if(rows.length()==0){TextView hint=tv("Create a group to start a conversation with several people.",12,muted());target.addView(hint,lp(dp(40),0));return;}for(int i=0;i<rows.length();i++){JSONObject group=rows.optJSONObject(i);if(group!=null)groupRow(group);}}
+    private void loadChats(){
+        final LinearLayout target=body;final int generation=homeGeneration;
+        heading("Your conversations","Your chats are saved on this device and appear instantly.");
+        LinearLayout chatRows=new LinearLayout(this);chatRows.setOrientation(LinearLayout.VERTICAL);target.addView(chatRows);
+        String cached=prefs.getString(chatCacheKey(),"");
+        if(!cached.isEmpty())try{renderChatRows(chatRows,new JSONArray(cached));}catch(Exception ignored){}
+        api("/conversations","GET",null,r->{if(generation!=homeGeneration||target!=body)return;if(!r.ok){if(chatRows.getChildCount()==0)message(r.error);return;}JSONArray rows=r.data.optJSONArray("conversations");if(rows!=null){prefs.edit().putString(chatCacheKey(),rows.toString()).apply();renderChatRows(chatRows,rows);}});
+        TextView groupTitle=tv("YOUR GROUPS",11,GREEN);groupTitle.setTypeface(null,1);target.addView(groupTitle,lp(dp(30),dp(15)));
+        LinearLayout groupRows=new LinearLayout(this);groupRows.setOrientation(LinearLayout.VERTICAL);target.addView(groupRows);
+        String cachedGroups=prefs.getString(groupCacheKey(),"");
+        if(!cachedGroups.isEmpty())try{renderGroupRows(groupRows,new JSONArray(cachedGroups));}catch(Exception ignored){}
+        api("/groups","GET",null,r->{if(generation!=homeGeneration||target!=body)return;if(!r.ok)return;JSONArray rows=r.data.optJSONArray("groups");if(rows!=null){prefs.edit().putString(groupCacheKey(),rows.toString()).apply();renderGroupRows(groupRows,rows);}});
+    }
     private void createGroupDialog(){
         LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(dp(8),dp(8),dp(8),0);
         EditText name=input("Group name");EditText handle=input("Group username (e.g. friends2026)");EditText desc=input("Group description");
@@ -394,13 +411,13 @@ public class MainActivity extends AppCompatActivity {
     private void loadMessages(LinearLayout list){
         final String conversationId=activeConversation;
         if(lastRenderedMessagesKey.isEmpty()){
-            String cached=prefs.getString("messages_cache_"+conversationId,"");
+            String cached=prefs.getString(messageCacheKey(conversationId),"");
             if(!cached.isEmpty())try{JSONArray saved=new JSONArray(cached);lastRenderedMessagesKey=saved.toString();for(int i=0;i<saved.length();i++){JSONObject m=saved.optJSONObject(i);if(m!=null)bubble(list,m);}}catch(Exception ignored){}
         }
         api("/messages?conversationId="+URLEncoder.encode(conversationId,StandardCharsets.UTF_8),"GET",null,r->{
             if(!r.ok||!conversationId.equals(activeConversation))return;JSONArray a=r.data.optJSONArray("messages");if(a==null)return;String snapshot=a.toString();
             if(snapshot.equals(lastRenderedMessagesKey)){refreshChatPresence();return;}
-            lastRenderedMessagesKey=snapshot;if(snapshot.length()<350000)prefs.edit().putString("messages_cache_"+conversationId,snapshot).apply();
+            lastRenderedMessagesKey=snapshot;if(snapshot.length()<350000)prefs.edit().putString(messageCacheKey(conversationId),snapshot).apply();
             list.removeAllViews();for(int i=0;i<a.length();i++){JSONObject m=a.optJSONObject(i);if(m!=null)bubble(list,m);}refreshChatPresence();list.postDelayed(()->{ScrollView parent=findScroll(list);if(parent!=null)parent.fullScroll(View.FOCUS_DOWN);},80);
         });
     }
@@ -408,7 +425,7 @@ public class MainActivity extends AppCompatActivity {
     private void bubble(LinearLayout list,JSONObject m){
         boolean mine=meId.equals(m.optString("senderId"));LinearLayout wrap=new LinearLayout(this);wrap.setOrientation(LinearLayout.VERTICAL);wrap.setGravity(mine?Gravity.RIGHT:Gravity.LEFT);
         String media=safeString(m,"mediaUrl","");String mediaType=safeString(m,"mediaType","");if(!media.isEmpty()){if(mediaType.startsWith("video")||media.startsWith("data:video/")){wrap.addView(videoPreview(media),new LinearLayout.LayoutParams(dp(250),dp(210)));}else if(media.startsWith("data:image/")||media.startsWith("https://")||media.startsWith("http://")){ImageView photo=new ImageView(this);photo.setScaleType(ImageView.ScaleType.CENTER_CROP);photo.setBackground(rounded(card(),dp(18)));loadImage(photo,media);wrap.addView(photo,new LinearLayout.LayoutParams(dp(250),dp(210)));}else{TextView attachment=tv("📎  Attachment",14,GREEN);attachment.setPadding(dp(14),dp(12),dp(14),dp(12));attachment.setBackground(rounded(card(),dp(16)));wrap.addView(attachment);}}
-        if(m.optBoolean("forwarded",false)){TextView fw=tv("↗ Forwarded",10,muted());fw.setPadding(dp(8),dp(3),dp(8),dp(3));wrap.addView(fw);}if(!safeString(m,"replyToId","").isEmpty()){LinearLayout quote=new LinearLayout(this);quote.setOrientation(LinearLayout.VERTICAL);quote.setPadding(dp(9),dp(6),dp(9),dp(6));quote.setBackground(rounded(dark?Color.rgb(28,49,43):Color.rgb(220,235,226),dp(10)));quote.addView(tv(safeString(m,"replyToSender","User"),10,GREEN));quote.addView(tv(safeString(m,"replyToBody","Message"),11,muted()));wrap.addView(quote,lp(-2,dp(4)));}String bodyText=safeString(m,"body","");if(!bodyText.isEmpty()){TextView b=tv(bodyText,15,mine?Color.WHITE:text());b.setPadding(dp(15),dp(11),dp(15),dp(11));b.setMaxWidth(dp(310));b.setBackground(mine?gradient(GREEN2,Color.rgb(45,116,255),dp(19)):rounded(card(),dp(19)));wrap.addView(b,lp(-2,dp(3)));}
+        if(m.optBoolean("forwarded",false)){TextView fw=tv("↗ Forwarded",10,muted());fw.setPadding(dp(8),dp(3),dp(8),dp(3));wrap.addView(fw);}if(!safeString(m,"replyToId","").isEmpty()){LinearLayout quote=new LinearLayout(this);quote.setOrientation(LinearLayout.VERTICAL);quote.setPadding(dp(9),dp(6),dp(9),dp(6));quote.setBackground(rounded(dark?Color.rgb(28,49,43):Color.rgb(220,235,226),dp(10)));quote.addView(tv(safeString(m,"replyToSender","User"),10,GREEN));quote.addView(tv(safeString(m,"replyToBody","Message"),11,muted()));wrap.addView(quote,lp(-2,dp(4)));}String bodyText=safeString(m,"body","");if(!bodyText.isEmpty()){TextView b=tv(bodyText,15,mine?Color.WHITE:text());b.setPadding(dp(15),dp(11),dp(15),dp(11));b.setMaxWidth(dp(310));b.setBackground(mine?gradient(Color.rgb(22,111,226),Color.rgb(25,190,213),dp(20)):rounded(dark?Color.rgb(17,31,53):Color.rgb(235,242,253),dp(20)));b.setElevation(dp(2));wrap.addView(b,lp(-2,dp(3)));}
         JSONArray reactions=m.optJSONArray("reactions");if(reactions!=null&&reactions.length()>0){LinkedHashMap<String,Integer> counts=new LinkedHashMap<>();for(int i=0;i<reactions.length();i++){JSONObject rx=reactions.optJSONObject(i);if(rx!=null){String emoji=rx.optString("emoji","");counts.put(emoji,counts.getOrDefault(emoji,0)+1);}}StringBuilder rb=new StringBuilder();for(Map.Entry<String,Integer> e:counts.entrySet())rb.append(e.getKey()).append(" ").append(e.getValue()).append("  ");TextView reactionText=tv(rb.toString(),11,GREEN);reactionText.setPadding(dp(8),dp(4),dp(8),dp(4));wrap.addView(reactionText);}wrap.setOnLongClickListener(v->{showMessageActions(m,list);return true;});
         String stamp=m.optString("createdAt","");String receipt=mine?(m.optString("seenAt","").isEmpty()?(m.optString("deliveredAt","").isEmpty()?"":"  ✓"):"  ✓✓"):"";TextView meta=tv((stamp.length()>=16?stamp.substring(11,16):"")+receipt,10,mine&&!m.optString("seenAt","").isEmpty()?Color.rgb(61,177,255):muted());meta.setPadding(dp(5),dp(1),dp(5),0);wrap.addView(meta);list.addView(wrap,lp(-2,dp(9)));
     }
