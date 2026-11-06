@@ -34,22 +34,28 @@ export async function POST(req: Request) {
   const postBody = String(body.body ?? "").trim().slice(0, 10000);
   const mediaUrl = typeof body.mediaUrl === "string" ? body.mediaUrl : "";
   const mediaType = typeof body.mediaType === "string" ? body.mediaType : "";
-  if (name.length < 2 || !/^\+[0-9]{3,15}$/.test(number)) {
-    return NextResponse.json({ error: "Enter a channel name and a valid short number, e.g. +49991." }, { status: 400 });
-  }
+  const channelId = typeof body.channelId === "string" ? body.channelId : "";
   if (!postBody && !mediaUrl) return NextResponse.json({ error: "Add text, a photo or a video before publishing." }, { status: 400 });
   if (mediaUrl.length > 3500000) return NextResponse.json({ error: "Media is too large. Use a compressed image or hosted media URL." }, { status: 413 });
-  const existing = await db.channel.findFirst({ where: { channelNumber: number } });
-  if (existing) return NextResponse.json({ error: "That channel number is already in use." }, { status: 409 });
   const adminUser = process.env.ADMIN_POST_AUTHOR_USERNAME
     ? await db.user.findUnique({ where: { username: process.env.ADMIN_POST_AUTHOR_USERNAME } })
     : null;
   if (!adminUser) return NextResponse.json({ error: "Set ADMIN_POST_AUTHOR_USERNAME in Vercel and make sure that user exists." }, { status: 503 });
-  let handle = makeHandle(name, number);
-  if (await db.channel.findUnique({ where: { handle } })) handle = `${handle}-${Date.now().toString(36)}`;
-  const channel = await db.channel.create({
-    data: { name, handle, channelNumber: number, description, avatarUrl, verified: true, ownerId: adminUser.id },
-  });
+  let channel = channelId ? await db.channel.findUnique({ where: { id: channelId } }) : null;
+  if (channelId && !channel) return NextResponse.json({ error: "Selected channel was not found." }, { status: 404 });
+  if (!channel) {
+    if (name.length < 2 || !/^\\+[0-9]{3,15}$/.test(number)) {
+      return NextResponse.json({ error: "Enter a channel name and a valid short number, e.g. +49991." }, { status: 400 });
+    }
+    if (await db.channel.findFirst({ where: { channelNumber: number } })) {
+      return NextResponse.json({ error: "That channel number is already in use." }, { status: 409 });
+    }
+    let handle = makeHandle(name, number);
+    if (await db.channel.findUnique({ where: { handle } })) handle = handle + "-" + Date.now().toString(36);
+    channel = await db.channel.create({
+      data: { name, handle, channelNumber: number, description, avatarUrl, verified: true, ownerId: adminUser.id },
+    });
+  }
   const message = await db.channelMessage.create({
     data: { channelId: channel.id, authorId: adminUser.id, body: postBody, mediaUrl: mediaUrl || null, mediaType: mediaType || null },
     include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true, verified: true } } },
