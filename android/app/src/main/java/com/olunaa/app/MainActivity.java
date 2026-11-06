@@ -38,7 +38,7 @@ import io.ably.lib.types.Param;
 public class MainActivity extends AppCompatActivity {
     private static final String API="https://olunaa.vercel.app/api";
     private static final int REQ_MEDIA=701, REQ_NOTIF=702, REQ_MEDIA_PERMISSION=703, REQ_CAMERA=704, REQ_DOCUMENT=705, REQ_LOCATION=706;
-    private static final int GREEN=Color.rgb(67,139,255), GREEN2=Color.rgb(42,91,232), BG_D=Color.rgb(7,13,28), SURFACE_D=Color.rgb(13,22,43), CARD_D=Color.rgb(20,31,57), FIELD_D=Color.rgb(27,41,70), TEXT_D=Color.rgb(242,246,255), MUTED_D=Color.rgb(145,161,190);
+    private static final int GREEN=Color.rgb(72,166,255), GREEN2=Color.rgb(32,104,235), BG_D=Color.rgb(5,11,24), SURFACE_D=Color.rgb(12,23,43), CARD_D=Color.rgb(17,34,59), FIELD_D=Color.rgb(18,35,59), TEXT_D=Color.rgb(244,249,255), MUTED_D=Color.rgb(151,177,207);
     private static final int BG_L=Color.rgb(244,248,255), SURFACE_L=Color.WHITE, CARD_L=Color.rgb(234,241,252), FIELD_L=Color.rgb(226,235,250), TEXT_L=Color.rgb(17,29,52), MUTED_L=Color.rgb(99,116,148);
     private final ExecutorService io=Executors.newCachedThreadPool();
     private final Handler main=new Handler(Looper.getMainLooper());
@@ -68,12 +68,12 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout.LayoutParams lp(int h,int b){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,h);p.setMargins(0,0,0,b);return p;}
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private void rootBase(){
-        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(bg());root.setPadding(dp(12),0,dp(12),0);setContentView(root);
+        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackground(dark?gradient(Color.rgb(5,11,24),Color.rgb(10,27,49),dp(0)):rounded(bg(),0));root.setPadding(dp(12),0,dp(12),0);setContentView(root);
         ViewCompat.setOnApplyWindowInsetsListener(root,(v,in)->{androidx.core.graphics.Insets x=in.getInsets(WindowInsetsCompat.Type.systemBars()|WindowInsetsCompat.Type.displayCutout());v.setPadding(dp(12)+x.left,x.top+dp(8),dp(12)+x.right,x.bottom+dp(6));return in;});
         ViewCompat.requestApplyInsets(root);
     }
     private EditText input(String hint){EditText e=new EditText(this);e.setHint(hint);e.setHintTextColor(muted());e.setTextColor(text());e.setTextSize(15);e.setSingleLine(true);e.setPadding(dp(18),0,dp(18),0);e.setBackground(rounded(field(),dp(18)));return e;}
-    private Button btn(String s,boolean primary){Button b=new Button(this);b.setText(s);b.setTextColor(primary?Color.WHITE:text());b.setTextSize(14);b.setAllCaps(false);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(14),0,dp(14),0);b.setBackground(primary?gradient(GREEN,GREEN2,dp(18)):rounded(card(),dp(18)));return b;}
+    private Button btn(String s,boolean primary){Button b=new Button(this);b.setText(s);b.setTextColor(primary?Color.WHITE:text());b.setTextSize(14);b.setAllCaps(false);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(14),0,dp(14),0);GradientDrawable shape=primary?gradient(GREEN,GREEN2,dp(18)):rounded(dark?Color.rgb(22,39,63):card(),dp(18));shape.setStroke(dp(1),primary?Color.argb(95,164,220,255):Color.argb(42,160,195,235));b.setBackground(shape);b.setElevation(primary?dp(5):dp(1));return b;}
     private ImageView logo(int size){ImageView im=new ImageView(this);im.setImageResource(R.drawable.ic_olunaa);im.setScaleType(ImageView.ScaleType.CENTER_INSIDE);return im;}
     private ImageView avatar(String url,int size){ImageView im=new ImageView(this);im.setScaleType(ImageView.ScaleType.CENTER_CROP);im.setBackground(rounded(field(),dp(999)));im.setClipToOutline(true);im.setOutlineProvider(android.view.ViewOutlineProvider.BACKGROUND);im.setContentDescription("Profile photo");im.setPadding(0,0,0,0);if(url!=null&&!url.isEmpty())loadImage(im,url);return im;}
     private Bitmap decodeScaledImage(byte[] bytes, int maxDimension) {
