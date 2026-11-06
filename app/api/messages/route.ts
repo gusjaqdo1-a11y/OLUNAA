@@ -42,7 +42,10 @@ export async function POST(req: Request) {
   await db.conversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
   const recipients = await db.conversationMember.findMany({ where: { conversationId, userId: { not: me.id } }, select: { userId: true } });
   if (recipients.length) await db.notification.createMany({ data: recipients.map(x => ({ recipientId: x.userId, actorId: me.id, type: "message", body: text || (mediaType === "video" ? "Sent a video" : "Sent a photo") })) });
-  await sendPushToUsers(recipients.map(x => x.userId), { title: me.displayName, body: text || (mediaType === "video" ? "Sent a video" : "Sent a photo"), data: { type: "message", conversationId } });
+  const avatar = typeof me.avatarUrl === "string" ? me.avatarUrl : "";
+  // Keep FCM data under its payload limit. Remote URLs are preferred; tiny data URLs are safe to inline.
+  const senderAvatarUrl = (avatar.startsWith("https://") || avatar.startsWith("http://") || (avatar.startsWith("data:image/") && avatar.length <= 2600)) ? avatar : "";
+  await sendPushToUsers(recipients.map(x => x.userId), { title: me.displayName, body: text || (mediaType === "video" ? "Sent a video" : "Sent a photo"), data: { type: "message", conversationId, senderAvatarUrl } });
   try { await publishConversationEvent(conversationId, "message:new", { message, conversationId }); } catch (error) { console.error("Ably message publish failed", error); }
   return NextResponse.json({ message }, { status: 201 });
 }

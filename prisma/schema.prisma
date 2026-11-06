@@ -170,6 +170,7 @@ model Channel {
   id String @id @default(cuid()) @map("_id")
   name String
   handle String @unique
+  channelNumber String?
   description String?
   avatarUrl String?
   ownerId String?
@@ -179,6 +180,7 @@ model Channel {
   updatedAt DateTime @updatedAt
   members ChannelMember[]
   messages ChannelMessage[]
+  @@index([channelNumber])
 }
 
 model ChannelMember {
@@ -197,6 +199,8 @@ model ChannelMessage {
   channelId String
   authorId String
   body String
+  mediaUrl String?
+  mediaType String?
   createdAt DateTime @default(now())
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
