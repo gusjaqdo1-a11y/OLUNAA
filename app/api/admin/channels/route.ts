@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   let channel = channelId ? await db.channel.findUnique({ where: { id: channelId } }) : null;
   if (channelId && !channel) return NextResponse.json({ error: "Selected channel was not found." }, { status: 404 });
   if (!channel) {
-    if (name.length < 2 || !/^\\+[0-9]{3,15}$/.test(number)) {
+    if (name.length < 2 || !/^\+[0-9]{3,15}$/.test(number)) {
       return NextResponse.json({ error: "Enter a channel name and a valid short number, e.g. +49991." }, { status: 400 });
     }
     if (await db.channel.findFirst({ where: { channelNumber: number } })) {
