@@ -289,3 +289,21 @@ model PollVote {
   @@unique([pollId, userId])
   @@index([optionId])
 }
+
+
+model CallSession {
+  id             String   @id @default(cuid()) @map("_id")
+  conversationId String
+  callerId       String
+  calleeIds      String[]
+  mode           String   @default("audio")
+  status         String   @default("invited")
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+  answeredAt     DateTime?
+  endedAt        DateTime?
+  endedBy        String?
+  @@index([conversationId, createdAt])
+  @@index([status, expiresAt])
+  @@index([callerId, createdAt])
+}
