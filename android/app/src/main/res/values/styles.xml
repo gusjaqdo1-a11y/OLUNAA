@@ -2,12 +2,13 @@
     <style name="Theme.OLUNAA" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowBackground">#071017</item>
+        <item name="android:statusBarColor">#070D1C</item>
+        <item name="android:navigationBarColor">#070D1C</item>
+        <item name="android:windowBackground">#070D1C</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="colorAccent">#23D36C</item>
-        <item name="android:colorAccent">#23D36C</item>
+        <item name="colorAccent">#438BFF</item>
+        <item name="android:colorAccent">#438BFF</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>
