@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   const settings = await db.userSettings.findUnique({ where: { userId: me.id } });
   await db.user.update({ where: { id: me.id }, data: { lastActiveAt: new Date() } });
   if (settings?.readReceipts !== false) await db.message.updateMany({ where: { conversationId: id, senderId: { not: me.id }, seenAt: null }, data: { seenAt: new Date(), deliveredAt: new Date() } });
-  const messages = await db.message.findMany({ where: { conversationId: id }, orderBy: { createdAt: "asc" }, take: 500, include: { reactions: { select: { emoji: true, userId: true } }, sender: { select: { id: true, displayName: true, username: true, avatarUrl: true } } } });
+  const messages = await db.message.findMany({ where: { conversationId: id }, orderBy: { createdAt: "asc" }, take: 500, include: { reactions: { select: { emoji: true, userId: true } }, poll: { include: { options: true, votes: { select: { userId: true, optionId: true } } } }, sender: { select: { id: true, displayName: true, username: true, avatarUrl: true } } } });
   return NextResponse.json({ messages });
 }
 export async function POST(req: Request) {
@@ -42,7 +42,10 @@ export async function POST(req: Request) {
   await db.conversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
   const recipients = await db.conversationMember.findMany({ where: { conversationId, userId: { not: me.id } }, select: { userId: true } });
   if (recipients.length) await db.notification.createMany({ data: recipients.map(x => ({ recipientId: x.userId, actorId: me.id, type: "message", body: text || (mediaType === "video" ? "Sent a video" : "Sent a photo") })) });
-  await sendPushToUsers(recipients.map(x => x.userId), { title: me.displayName, body: text || (mediaType === "video" ? "Sent a video" : "Sent a photo"), data: { type: "message", conversationId } });
+  const avatar = typeof me.avatarUrl === "string" ? me.avatarUrl : "";
+  // Keep FCM data under its payload limit. Remote URLs are preferred; tiny data URLs are safe to inline.
+  const senderAvatarUrl = (avatar.startsWith("https://") || avatar.startsWith("http://") || (avatar.startsWith("data:image/") && avatar.length <= 2600)) ? avatar : "";
+  await sendPushToUsers(recipients.map(x => x.userId), { title: me.displayName, body: text || (mediaType === "video" ? "Sent a video" : "Sent a photo"), data: { type: "message", conversationId, senderAvatarUrl } });
   try { await publishConversationEvent(conversationId, "message:new", { message, conversationId }); } catch (error) { console.error("Ably message publish failed", error); }
   return NextResponse.json({ message }, { status: 201 });
 }
