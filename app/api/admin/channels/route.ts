@@ -35,12 +35,13 @@ export async function POST(req: Request) {
   const mediaUrl = typeof body.mediaUrl === "string" ? body.mediaUrl : "";
   const mediaType = typeof body.mediaType === "string" ? body.mediaType : "";
   const channelId = typeof body.channelId === "string" ? body.channelId : "";
-  if (!postBody && !mediaUrl) return NextResponse.json({ error: "Add text, a photo or a video before publishing." }, { status: 400 });
+  const createOnly = !postBody && !mediaUrl && !channelId && name.length >= 2 && /^\\+[0-9]{3,15}$/.test(number);
+  if (!postBody && !mediaUrl && !createOnly) return NextResponse.json({ error: "Add an announcement, photo or video, or provide valid channel details to create a channel." }, { status: 400 });
   if (mediaUrl.length > 3500000) return NextResponse.json({ error: "Media is too large. Use a compressed image or hosted media URL." }, { status: 413 });
   const adminUser = process.env.ADMIN_POST_AUTHOR_USERNAME
     ? await db.user.findUnique({ where: { username: process.env.ADMIN_POST_AUTHOR_USERNAME } })
     : null;
-  if (!adminUser) return NextResponse.json({ error: "Set ADMIN_POST_AUTHOR_USERNAME in Vercel and make sure that user exists." }, { status: 503 });
+  if (!adminUser && !createOnly) return NextResponse.json({ error: "Set ADMIN_POST_AUTHOR_USERNAME in Vercel and make sure that user exists before publishing channel posts." }, { status: 503 });
   let channel = channelId ? await db.channel.findUnique({ where: { id: channelId } }) : null;
   if (channelId && !channel) return NextResponse.json({ error: "Selected channel was not found." }, { status: 404 });
   if (!channel) {
@@ -53,9 +54,11 @@ export async function POST(req: Request) {
     let handle = makeHandle(name, number);
     if (await db.channel.findUnique({ where: { handle } })) handle = handle + "-" + Date.now().toString(36);
     channel = await db.channel.create({
-      data: { name, handle, channelNumber: number, description, avatarUrl, verified: true, ownerId: adminUser.id },
+      data: { name, handle, channelNumber: number, description, avatarUrl, verified: true, ownerId: adminUser?.id ?? null },
     });
   }
+  if (createOnly) return NextResponse.json({ channel, message: null }, { status: 201 });
+  if (!adminUser) return NextResponse.json({ error: "Admin posting identity is not configured." }, { status: 503 });
   const message = await db.channelMessage.create({
     data: { channelId: channel.id, authorId: adminUser.id, body: postBody, mediaUrl: mediaUrl || null, mediaType: mediaType || null },
     include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true, verified: true } } },
