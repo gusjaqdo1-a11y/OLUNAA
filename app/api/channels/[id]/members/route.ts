@@ -17,7 +17,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const membership = await db.channelMember.findUnique({ where: { channelId_userId: { channelId: id, userId: me.id } } });
   if (!membership || !["owner","admin"].includes(membership.role)) return NextResponse.json({ error: "Only channel admins can invite members." }, { status: 403 });
   const body = await req.json().catch(() => ({}));
-  const ids: string[] = Array.isArray(body.userIds) ? [...new Set(body.userIds.filter((x: unknown): x is string => typeof x === "string" && x.length > 0))].slice(0, 100) : [];
+  const rawIds: unknown[] = Array.isArray(body.userIds) ? body.userIds as unknown[] : [];
+  const ids: string[] = [...new Set<string>(rawIds.filter((value): value is string => typeof value === "string" && value.trim().length > 0))].slice(0, 100);
   if (!ids.length) return NextResponse.json({ error: "Choose at least one user." }, { status: 400 });
   const users = await db.user.findMany({ where: { id: { in: ids } }, select: { id: true } });
   for (const user of users) await db.channelMember.upsert({ where: { channelId_userId: { channelId: id, userId: user.id } }, create: { channelId: id, userId: user.id, role: "member" }, update: {} });

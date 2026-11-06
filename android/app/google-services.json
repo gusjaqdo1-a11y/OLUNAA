@@ -1,0 +1,28 @@
+{
+  "project_info": {
+    "project_number": "511163864113",
+    "project_id": "olunaa-52ff0",
+    "storage_bucket": "olunaa-52ff0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:511163864113:android:b4437072468bc00969f110",
+        "android_client_info": {
+          "package_name": "com.olunaa.app"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKyOOjgi1YHsddaGoqzjcBggkyER-0bWA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
