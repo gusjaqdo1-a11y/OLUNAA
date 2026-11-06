@@ -295,99 +295,129 @@ public class MainActivity extends AppCompatActivity {
     private void showInviteGroupMember(String groupId){EditText query=input("Search by name, @username or email");LinearLayout results=new LinearLayout(this);results.setOrientation(LinearLayout.VERTICAL);ScrollView sc=new ScrollView(this);sc.addView(results);LinearLayout wrap=new LinearLayout(this);wrap.setOrientation(LinearLayout.VERTICAL);wrap.addView(query,lp(dp(52),dp(6)));wrap.addView(sc,new LinearLayout.LayoutParams(-1,dp(260)));query.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){String q=s.toString().trim();if(q.length()<2)return;api("/search?q="+URLEncoder.encode(q,StandardCharsets.UTF_8),"GET",null,r->{if(!r.ok)return;results.removeAllViews();JSONArray users=r.data.optJSONArray("users");if(users==null)return;for(int i=0;i<users.length();i++){JSONObject u=users.optJSONObject(i);if(u==null)continue;Button item=btn(u.optString("displayName","User")+"  @"+u.optString("username",""),false);results.addView(item,lp(dp(48),dp(4)));item.setOnClickListener(v->{JSONObject payload=new JSONObject();try{JSONArray ids=new JSONArray();ids.put(u.optString("id"));payload.put("userIds",ids);}catch(Exception ignored){}api("/groups/"+groupId+"/members","POST",payload,res->{if(!res.ok)message(res.error);else{message("Member invited.");showGroupMembers(groupId);}});});}});}public void afterTextChanged(android.text.Editable e){}});new AlertDialog.Builder(this).setTitle("Invite to group").setView(wrap).setNegativeButton("Close",null).show();}
     private void groupRow(JSONObject g){LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(12),dp(10),dp(12),dp(10));row.setBackground(rounded(card(),dp(18)));ImageView av=avatar(g.optString("avatarUrl",""),1);row.addView(av,new LinearLayout.LayoutParams(dp(52),dp(52)));LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(12),0,0,0);TextView title=tv(g.optString("name","Group"),15,text());title.setTypeface(null,1);info.addView(title);info.addView(tv("@"+g.optString("handle",""),12,muted()));JSONArray members=g.optJSONArray("members");info.addView(tv((members==null?0:members.length())+" members",11,GREEN));row.addView(info,new LinearLayout.LayoutParams(0,dp(66),1));body.addView(row,lp(dp(76),dp(6)));row.setOnClickListener(v->{String cid=g.optString("conversationId","");if(!cid.isEmpty()){activeGroupId=g.optString("id","");openChat(cid,g.optString("name","Group"),g.optString("avatarUrl",""),true);}else api("/groups/"+g.optString("id")+"/join","POST",new JSONObject(),r->{if(!r.ok){message(r.error);return;}activeGroupId=g.optString("id","");openChat(r.data.optString("conversationId"),g.optString("name","Group"),g.optString("avatarUrl",""),true);});});row.setOnLongClickListener(v->{showGroupMembers(g.optString("id",""));return true;});}
     private void chatRow(JSONObject c, JSONObject o) {
+        // WhatsApp-inspired conversation row: edge-to-edge, clear hierarchy,
+        // generous touch target and a subtle separator instead of stacked cards.
         boolean online = o.optBoolean("online", false);
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(10), dp(8), dp(10), dp(8));
-        row.setBackground(rounded(card(), dp(18)));
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setPadding(dp(4), dp(9), dp(5), dp(9));
+        row.setBackgroundColor(Color.TRANSPARENT);
+        row.setMinimumHeight(dp(78));
+        row.setClickable(true);
+        row.setFocusable(true);
 
         FrameLayout avatarWrap = new FrameLayout(this);
         ImageView photo = avatar(o.optString("avatarUrl", ""), 1);
-        avatarWrap.addView(photo, new FrameLayout.LayoutParams(dp(52), dp(52), Gravity.CENTER));
+        avatarWrap.addView(photo, new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER));
         if (online) {
             View presence = new View(this);
             GradientDrawable dot = new GradientDrawable();
             dot.setShape(GradientDrawable.OVAL);
             dot.setColor(Color.rgb(48, 209, 88));
-            dot.setStroke(dp(2), card());
+            dot.setStroke(dp(2), bg());
             presence.setBackground(dot);
-            FrameLayout.LayoutParams dotParams = new FrameLayout.LayoutParams(dp(13), dp(13), Gravity.BOTTOM | Gravity.RIGHT);
+            FrameLayout.LayoutParams dotParams = new FrameLayout.LayoutParams(dp(14), dp(14), Gravity.BOTTOM | Gravity.RIGHT);
             dotParams.setMargins(0, 0, dp(1), dp(1));
             avatarWrap.addView(presence, dotParams);
         }
-        row.addView(avatarWrap, new LinearLayout.LayoutParams(dp(56), dp(56)));
+        row.addView(avatarWrap, new LinearLayout.LayoutParams(dp(64), dp(64)));
 
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
-        info.setPadding(dp(10), 0, dp(6), 0);
+        info.setGravity(Gravity.CENTER_VERTICAL);
+        info.setPadding(dp(9), 0, dp(7), 0);
+
+        JSONObject last = c.optJSONObject("lastMessage");
+        String displayName = safeString(o, "displayName", "OLUNAA user");
+        String preview = "Tap to start a conversation";
+        String time = "";
+        boolean unread = false;
+        boolean mine = false;
+        boolean seen = false;
+        if (last != null) {
+            String bodyText = safeString(last, "body", "").trim();
+            String mediaType = safeString(last, "mediaType", "");
+            if (!bodyText.isEmpty()) preview = bodyText;
+            else if (mediaType.startsWith("image")) preview = "▧  Photo";
+            else if (mediaType.startsWith("video")) preview = "▶  Video";
+            else if (mediaType.startsWith("audio")) preview = "♫  Voice message";
+            else if (!safeString(last, "mediaUrl", "").isEmpty()) preview = "📎  Attachment";
+            else preview = "Message";
+            mine = meId.equals(last.optString("senderId", ""));
+            seen = !safeString(last, "seenAt", "").isEmpty();
+            if (mine) preview = "You: " + preview;
+            String created = safeString(last, "createdAt", "");
+            if (created.length() >= 16) time = created.substring(11, 16);
+            unread = !mine && !seen;
+        }
+
         LinearLayout titleLine = new LinearLayout(this);
         titleLine.setGravity(Gravity.CENTER_VERTICAL);
-        TextView name = tv(o.optString("displayName", "OLUNAA user"), 15, text());
+        titleLine.setOrientation(LinearLayout.HORIZONTAL);
+        TextView name = tv(displayName, 16, text());
         name.setTypeface(null, 1);
-        titleLine.addView(name);
+        name.setSingleLine(true);
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        titleLine.addView(name, new LinearLayout.LayoutParams(0, dp(25), 1));
         if (o.optBoolean("verified")) {
             ImageView verified = new ImageView(this);
             verified.setImageResource(R.drawable.ic_verified_blue);
             verified.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-            LinearLayout.LayoutParams verifiedLp = new LinearLayout.LayoutParams(dp(18), dp(18));
+            LinearLayout.LayoutParams verifiedLp = new LinearLayout.LayoutParams(dp(17), dp(17));
             verifiedLp.leftMargin = dp(4);
             titleLine.addView(verified, verifiedLp);
         }
-        info.addView(titleLine);
-        TextView handle = tv("@" + o.optString("username", ""), 10, muted());
-        handle.setPadding(0, dp(2), 0, 0);
-        info.addView(handle);
-
-        JSONObject last = c.optJSONObject("lastMessage");
-        String preview = "Start a conversation";
-        String time = "";
-        boolean unread = false;
-        boolean mine = false;
-        if (last != null) {
-            String bodyText = last.optString("body", "").trim();
-            preview = bodyText.isEmpty() ? "Shared a photo or video" : bodyText;
-            mine = meId.equals(last.optString("senderId", ""));
-            if (mine) preview = "You: " + preview;
-            String created = last.optString("createdAt", "");
-            if (created.length() >= 16) time = created.substring(11, 16);
-            unread = !mine && last.optString("seenAt", "").isEmpty();
+        if (!time.isEmpty()) {
+            TextView timeView = tv(time, 11, unread ? GREEN : muted());
+            timeView.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+            LinearLayout.LayoutParams timeLp = new LinearLayout.LayoutParams(-2, dp(22));
+            timeLp.leftMargin = dp(7);
+            titleLine.addView(timeView, timeLp);
         }
-        LinearLayout bottom = new LinearLayout(this);
-        bottom.setGravity(Gravity.CENTER_VERTICAL);
-        TextView messagePreview = tv(preview, 11, muted());
+        info.addView(titleLine, new LinearLayout.LayoutParams(-1, dp(27)));
+
+        LinearLayout previewLine = new LinearLayout(this);
+        previewLine.setGravity(Gravity.CENTER_VERTICAL);
+        TextView messagePreview = tv(preview, 13, unread ? text() : muted());
         messagePreview.setSingleLine(true);
         messagePreview.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        bottom.addView(messagePreview, new LinearLayout.LayoutParams(0, dp(22), 1));
+        messagePreview.setTypeface(null, unread ? 1 : 0);
+        previewLine.addView(messagePreview, new LinearLayout.LayoutParams(0, dp(24), 1));
+        if (mine && last != null) {
+            TextView receipt = tv(seen ? "✓✓" : "✓", 12, seen ? Color.rgb(69, 170, 255) : muted());
+            receipt.setPadding(0, 0, dp(5), 0);
+            previewLine.addView(receipt);
+        }
         if (unread) {
-            TextView fresh = tv("NEW", 8, Color.WHITE);
-            fresh.setTypeface(null, 1);
-            fresh.setGravity(Gravity.CENTER);
-            fresh.setPadding(dp(6), dp(3), dp(6), dp(3));
-            fresh.setBackground(rounded(GREEN2, dp(8)));
-            LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(-2, dp(19));
-            badgeParams.setMargins(dp(5), 0, 0, 0);
-            bottom.addView(fresh, badgeParams);
-        } else if (mine && last != null && !last.optString("seenAt", "").isEmpty()) {
-            TextView receipt = tv("✓✓", 10, Color.rgb(66, 165, 255));
-            receipt.setPadding(dp(5), 0, 0, 0);
-            bottom.addView(receipt);
+            int unreadCount = Math.max(1, c.optInt("unreadCount", 1));
+            TextView badge = tv(unreadCount > 99 ? "99+" : String.valueOf(unreadCount), 10, Color.WHITE);
+            badge.setGravity(Gravity.CENTER);
+            badge.setTypeface(null, 1);
+            badge.setMinWidth(dp(20));
+            badge.setPadding(dp(5), 0, dp(5), 0);
+            badge.setBackground(rounded(Color.rgb(37, 190, 105), dp(20)));
+            LinearLayout.LayoutParams badgeLp = new LinearLayout.LayoutParams(-2, dp(20));
+            badgeLp.leftMargin = dp(7);
+            previewLine.addView(badge, badgeLp);
+        } else if (online) {
+            TextView active = tv("online", 10, GREEN);
+            active.setPadding(dp(5), 0, 0, 0);
+            previewLine.addView(active);
         }
-        info.addView(bottom);
-        row.addView(info, new LinearLayout.LayoutParams(0, dp(64), 1));
+        info.addView(previewLine, new LinearLayout.LayoutParams(-1, dp(25)));
+        row.addView(info, new LinearLayout.LayoutParams(0, dp(62), 1));
 
-        LinearLayout meta = new LinearLayout(this);
-        meta.setOrientation(LinearLayout.VERTICAL);
-        meta.setGravity(Gravity.TOP | Gravity.RIGHT);
-        if (!time.isEmpty()) meta.addView(tv(time, 9, online ? GREEN : muted()));
-        if (online) {
-            TextView active = tv("ACTIVE", 7, GREEN);
-            active.setTypeface(null, 1);
-            active.setPadding(0, dp(5), 0, 0);
-            meta.addView(active);
-        }
-        row.addView(meta, new LinearLayout.LayoutParams(dp(42), dp(54)));
-        body.addView(row, lp(dp(76), dp(5)));
-        row.setOnClickListener(v -> openChat(c.optString("id"), o.optString("displayName", "User"), o.optString("avatarUrl", ""), false, o.optBoolean("verified")));
+        View divider = new View(this);
+        divider.setBackgroundColor(Color.argb(dark ? 34 : 24, 145, 165, 195));
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.VERTICAL);
+        item.addView(row, new LinearLayout.LayoutParams(-1, dp(82)));
+        LinearLayout.LayoutParams dividerLp = new LinearLayout.LayoutParams(-1, dp(1));
+        dividerLp.leftMargin = dp(73);
+        item.addView(divider, dividerLp);
+        body.addView(item, lp(-2, 0));
+        row.setOnClickListener(v -> openChat(c.optString("id"), displayName, o.optString("avatarUrl", ""), false, o.optBoolean("verified")));
     }
 
     private void showSearch(){rootBase();LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(0,dp(8),0,0);root.addView(box,new LinearLayout.LayoutParams(-1,-1));LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);TextView back=tv("‹",34,text());back.setGravity(Gravity.CENTER);bar.addView(back,new LinearLayout.LayoutParams(dp(48),dp(54)));EditText q=input("Search name, @username or email");bar.addView(q,new LinearLayout.LayoutParams(0,dp(54),1));box.addView(bar,lp(dp(62),dp(5)));back.setOnClickListener(v->showHome("Chats"));LinearLayout results=new LinearLayout(this);results.setOrientation(LinearLayout.VERTICAL);ScrollView sc=new ScrollView(this);sc.addView(results);box.addView(sc,new LinearLayout.LayoutParams(-1,0,1));q.setOnEditorActionListener((v,a,e)->{searchUsers(q.getText().toString(),results);return true;});q.requestFocus();((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).showSoftInput(q,InputMethodManager.SHOW_IMPLICIT);}
@@ -413,7 +443,7 @@ public class MainActivity extends AppCompatActivity {
         chatReplyHint=tv("",11,GREEN);chatReplyHint.setPadding(dp(12),dp(6),dp(12),dp(6));chatReplyHint.setVisibility(View.GONE);root.addView(chatReplyHint,lp(-2,0));
         LinearLayout composer=new LinearLayout(this);composer.setGravity(Gravity.CENTER_VERTICAL);composer.setPadding(dp(5),dp(6),dp(5),dp(6));composer.setBackground(gradient(Color.rgb(18,38,78),Color.rgb(9,20,48),dp(25)));
         ImageView attach=new ImageView(this);attach.setImageResource(R.drawable.ic_action_attach);attach.setImageTintList(android.content.res.ColorStateList.valueOf(GREEN));attach.setPadding(dp(7),dp(7),dp(7),dp(7));composer.addView(attach,new LinearLayout.LayoutParams(dp(38),dp(50)));
-        EditText textBox=input("Message OLUNAA…");textBox.setSingleLine(false);textBox.setMinLines(1);textBox.setMaxLines(4);textBox.setMaxHeight(dp(116));textBox.setHorizontallyScrolling(false);textBox.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_CAP_SENTENCES|InputType.TYPE_TEXT_FLAG_MULTI_LINE);textBox.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEND|android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI);textBox.setTextColor(text());textBox.setHintTextColor(muted());
+        EditText textBox=input("Message OLUNAA…");textBox.setSingleLine(false);textBox.setMinLines(1);textBox.setMaxLines(4);textBox.setMaxHeight(dp(116));textBox.setHorizontallyScrolling(false);textBox.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_CAP_SENTENCES|InputType.TYPE_TEXT_FLAG_MULTI_LINE);textBox.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEND|android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI);textBox.setTextColor(dark?Color.rgb(250,252,255):Color.rgb(16,28,48));textBox.setHintTextColor(dark?Color.rgb(168,184,207):Color.rgb(100,116,139));textBox.setTextSize(16);textBox.setGravity(Gravity.CENTER_VERTICAL);textBox.setPadding(dp(14),dp(10),dp(14),dp(10));textBox.setMinHeight(dp(48));textBox.setFocusable(true);textBox.setFocusableInTouchMode(true);textBox.setSelectAllOnFocus(false);
         composer.addView(textBox,new LinearLayout.LayoutParams(0,-2,1));
         textBox.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence x,int st,int c,int a){}public void onTextChanged(CharSequence x,int st,int before,int count){if(typingDebounce!=null)main.removeCallbacks(typingDebounce);String value=x.toString().trim();typingDebounce=()->setTyping(!value.isEmpty());main.postDelayed(typingDebounce,450);}public void afterTextChanged(android.text.Editable e){}});
         ImageView camera=new ImageView(this);camera.setImageResource(R.drawable.ic_action_camera);camera.setImageTintList(android.content.res.ColorStateList.valueOf(GREEN));camera.setPadding(dp(7),dp(7),dp(7),dp(7));composer.addView(camera,new LinearLayout.LayoutParams(dp(38),dp(50)));
