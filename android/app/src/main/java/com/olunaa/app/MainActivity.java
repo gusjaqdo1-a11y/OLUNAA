@@ -188,11 +188,11 @@ public class MainActivity extends AppCompatActivity {
         TextView title=tv(tab.equals("Chats")?"OLUNAA":tab,21,text());title.setTypeface(null,1);
         TextView sub=tv("@"+meUsername,11,muted());titleBox.addView(title);titleBox.addView(sub);
         top.addView(titleBox,new LinearLayout.LayoutParams(0,dp(48),1));
-        TextView newChat=tv("✎  New Chat",11,text());newChat.setGravity(Gravity.CENTER);newChat.setTypeface(null,1);newChat.setPadding(dp(9),0,dp(9),0);newChat.setBackground(rounded(card(),dp(14)));
-        TextView newGroup=tv("＋  New Group",11,Color.WHITE);newGroup.setGravity(Gravity.CENTER);newGroup.setTypeface(null,1);newGroup.setPadding(dp(9),0,dp(9),0);newGroup.setBackground(gradient(GREEN,GREEN2,dp(14)));
-        TextView menu=tv("⋮",25,text());menu.setGravity(Gravity.CENTER);
-        if(tab.equals("Chats")){top.addView(newChat,new LinearLayout.LayoutParams(dp(96),dp(42)));LinearLayout.LayoutParams ngp=new LinearLayout.LayoutParams(dp(104),dp(42));ngp.setMargins(dp(6),0,0,0);top.addView(newGroup,ngp);}else if(tab.equals("Communities")){TextView newChannel=tv("＋ Channel",11,Color.WHITE);newChannel.setGravity(Gravity.CENTER);newChannel.setTypeface(null,1);newChannel.setPadding(dp(9),0,dp(9),0);newChannel.setBackground(gradient(GREEN,GREEN2,dp(14)));top.addView(newChannel,new LinearLayout.LayoutParams(dp(92),dp(42)));newChannel.setOnClickListener(v->createChannelDialog());}else{TextView searchIcon=tv("⌕",23,text());searchIcon.setGravity(Gravity.CENTER);top.addView(searchIcon,new LinearLayout.LayoutParams(dp(40),dp(42)));searchIcon.setOnClickListener(v->showSearch());}top.addView(menu,new LinearLayout.LayoutParams(dp(28),dp(42)));root.addView(top);
-        if(tab.equals("Chats")){LinearLayout searchWrap=new LinearLayout(this);searchWrap.setGravity(Gravity.CENTER_VERTICAL);searchWrap.setPadding(dp(14),0,dp(12),0);searchWrap.setBackground(rounded(field(),dp(16)));TextView glyph=tv("⌕",25,muted());searchWrap.addView(glyph,new LinearLayout.LayoutParams(dp(30),dp(48)));EditText query=input("Search chats, people or groups");query.setBackgroundColor(Color.TRANSPARENT);query.setPadding(0,0,0,0);searchWrap.addView(query,new LinearLayout.LayoutParams(0,dp(48),1));root.addView(searchWrap,lp(dp(50),dp(10)));searchWrap.setOnClickListener(v->showSearch());query.setOnClickListener(v->showSearch());}
+        TextView newChat=tv("New Chat",11,text());newChat.setGravity(Gravity.CENTER);newChat.setTypeface(null,1);newChat.setPadding(dp(9),0,dp(9),0);newChat.setBackground(rounded(card(),dp(14)));
+        TextView newGroup=tv("New Group",11,Color.WHITE);newGroup.setGravity(Gravity.CENTER);newGroup.setTypeface(null,1);newGroup.setPadding(dp(9),0,dp(9),0);newGroup.setBackground(gradient(GREEN,GREEN2,dp(14)));
+        ImageView menu=new ImageView(this);menu.setImageResource(R.drawable.ic_action_more);menu.setImageTintList(android.content.res.ColorStateList.valueOf(text()));menu.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        if(tab.equals("Chats")){top.addView(newChat,new LinearLayout.LayoutParams(dp(96),dp(42)));LinearLayout.LayoutParams ngp=new LinearLayout.LayoutParams(dp(104),dp(42));ngp.setMargins(dp(6),0,0,0);top.addView(newGroup,ngp);}else if(tab.equals("Communities")){TextView newChannel=tv("＋ Channel",11,Color.WHITE);newChannel.setGravity(Gravity.CENTER);newChannel.setTypeface(null,1);newChannel.setPadding(dp(9),0,dp(9),0);newChannel.setBackground(gradient(GREEN,GREEN2,dp(14)));top.addView(newChannel,new LinearLayout.LayoutParams(dp(92),dp(42)));newChannel.setOnClickListener(v->createChannelDialog());}else{ImageView searchIcon=new ImageView(this);searchIcon.setImageResource(R.drawable.ic_action_search);searchIcon.setImageTintList(android.content.res.ColorStateList.valueOf(text()));searchIcon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);top.addView(searchIcon,new LinearLayout.LayoutParams(dp(40),dp(42)));searchIcon.setOnClickListener(v->showSearch());}top.addView(menu,new LinearLayout.LayoutParams(dp(28),dp(42)));root.addView(top);
+        if(tab.equals("Chats")){LinearLayout searchWrap=new LinearLayout(this);searchWrap.setGravity(Gravity.CENTER_VERTICAL);searchWrap.setPadding(dp(14),0,dp(12),0);searchWrap.setBackground(rounded(field(),dp(16)));ImageView glyph=new ImageView(this);glyph.setImageResource(R.drawable.ic_action_search);glyph.setImageTintList(android.content.res.ColorStateList.valueOf(muted()));searchWrap.addView(glyph,new LinearLayout.LayoutParams(dp(24),dp(48)));EditText query=input("Search chats, people or groups");query.setBackgroundColor(Color.TRANSPARENT);query.setPadding(0,0,0,0);searchWrap.addView(query,new LinearLayout.LayoutParams(0,dp(48),1));root.addView(searchWrap,lp(dp(50),dp(10)));searchWrap.setOnClickListener(v->showSearch());query.setOnClickListener(v->showSearch());}
         body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.addView(body);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
         LinearLayout nav=new LinearLayout(this);nav.setBackground(rounded(surface(),dp(24)));nav.setPadding(0,dp(3),0,dp(3));
         String[] labels={"Chats","Updates","Communities","Calls","Settings"};int[] navIcons={R.drawable.ic_nav_chats,R.drawable.ic_nav_updates,R.drawable.ic_nav_communities,R.drawable.ic_nav_calls,R.drawable.ic_nav_settings};
@@ -256,12 +256,12 @@ public class MainActivity extends AppCompatActivity {
         boolean online = o.optBoolean("online", false);
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(12), dp(10), dp(12), dp(10));
-        row.setBackground(rounded(card(), dp(22)));
+        row.setPadding(dp(10), dp(8), dp(10), dp(8));
+        row.setBackground(rounded(card(), dp(18)));
 
         FrameLayout avatarWrap = new FrameLayout(this);
         ImageView photo = avatar(o.optString("avatarUrl", ""), 1);
-        avatarWrap.addView(photo, new FrameLayout.LayoutParams(dp(58), dp(58), Gravity.CENTER));
+        avatarWrap.addView(photo, new FrameLayout.LayoutParams(dp(52), dp(52), Gravity.CENTER));
         if (online) {
             View presence = new View(this);
             GradientDrawable dot = new GradientDrawable();
@@ -273,7 +273,7 @@ public class MainActivity extends AppCompatActivity {
             dotParams.setMargins(0, 0, dp(1), dp(1));
             avatarWrap.addView(presence, dotParams);
         }
-        row.addView(avatarWrap, new LinearLayout.LayoutParams(dp(62), dp(62)));
+        row.addView(avatarWrap, new LinearLayout.LayoutParams(dp(56), dp(56)));
 
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
@@ -342,7 +342,7 @@ public class MainActivity extends AppCompatActivity {
             meta.addView(active);
         }
         row.addView(meta, new LinearLayout.LayoutParams(dp(42), dp(54)));
-        body.addView(row, lp(dp(88), dp(7)));
+        body.addView(row, lp(dp(76), dp(5)));
         row.setOnClickListener(v -> openChat(c.optString("id"), o.optString("displayName", "User"), o.optString("avatarUrl", "")));
     }
 
@@ -366,12 +366,12 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout messages=new LinearLayout(this);messages.setOrientation(LinearLayout.VERTICAL);messages.setPadding(dp(5),dp(12),dp(5),dp(14));sc.addView(messages);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
         chatReplyHint=tv("",11,GREEN);chatReplyHint.setPadding(dp(12),dp(6),dp(12),dp(6));chatReplyHint.setVisibility(View.GONE);root.addView(chatReplyHint,lp(-2,0));
         LinearLayout composer=new LinearLayout(this);composer.setGravity(Gravity.CENTER_VERTICAL);composer.setPadding(dp(5),dp(6),dp(5),dp(6));composer.setBackground(gradient(Color.rgb(17,39,31),Color.rgb(9,25,21),dp(25)));
-        TextView attach=tv("＋",24,GREEN);attach.setGravity(Gravity.CENTER);composer.addView(attach,new LinearLayout.LayoutParams(dp(38),dp(50)));
+        ImageView attach=new ImageView(this);attach.setImageResource(R.drawable.ic_action_attach);attach.setImageTintList(android.content.res.ColorStateList.valueOf(GREEN));attach.setPadding(dp(7),dp(7),dp(7),dp(7));composer.addView(attach,new LinearLayout.LayoutParams(dp(38),dp(50)));
         EditText textBox=input("Message OLUNAA…");textBox.setSingleLine(true);textBox.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
         composer.addView(textBox,new LinearLayout.LayoutParams(0,dp(50),1));
         textBox.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence x,int st,int c,int a){}public void onTextChanged(CharSequence x,int st,int before,int count){if(typingDebounce!=null)main.removeCallbacks(typingDebounce);String value=x.toString().trim();typingDebounce=()->setTyping(!value.isEmpty());main.postDelayed(typingDebounce,450);}public void afterTextChanged(android.text.Editable e){}});
-        TextView camera=tv("▣",20,GREEN);camera.setGravity(Gravity.CENTER);composer.addView(camera,new LinearLayout.LayoutParams(dp(38),dp(50)));
-        TextView send=tv("➤",20,Color.WHITE);send.setGravity(Gravity.CENTER);send.setBackground(gradient(GREEN2,Color.rgb(29,157,255),dp(50)));composer.addView(send,new LinearLayout.LayoutParams(dp(46),dp(46)));root.addView(composer,lp(dp(60),dp(4)));
+        ImageView camera=new ImageView(this);camera.setImageResource(R.drawable.ic_action_camera);camera.setImageTintList(android.content.res.ColorStateList.valueOf(GREEN));camera.setPadding(dp(7),dp(7),dp(7),dp(7));composer.addView(camera,new LinearLayout.LayoutParams(dp(38),dp(50)));
+        ImageView send=new ImageView(this);send.setImageResource(R.drawable.ic_action_send);send.setImageTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));send.setPadding(dp(12),dp(12),dp(12),dp(12));send.setBackground(gradient(GREEN2,GREEN,dp(50)));composer.addView(send,new LinearLayout.LayoutParams(dp(46),dp(46)));root.addView(composer,lp(dp(60),dp(4)));
         back.setOnClickListener(v->showHome("Chats"));attach.setOnClickListener(v->{mediaMode=3;pickImage();});camera.setOnClickListener(v->{mediaMode=3;pickImage();});
         send.setOnClickListener(v->sendMessage(textBox,messages));textBox.setOnEditorActionListener((v,a,e)->{if(a==android.view.inputmethod.EditorInfo.IME_ACTION_SEND){sendMessage(textBox,messages);return true;}return false;});
         voice.setOnClickListener(v->callNotice(false));video.setOnClickListener(v->callNotice(true));
