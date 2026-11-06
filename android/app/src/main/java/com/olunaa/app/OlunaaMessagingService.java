@@ -188,7 +188,7 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
             acceptIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             acceptIntent.putExtra("type", "incoming_call");
             acceptIntent.putExtra("call_action", "accept");
-            for (String key : new String[]{"conversationId", "mode", "callerName"}) {
+            for (String key : new String[]{"callId", "conversationId", "mode", "callerName"}) {
                 String value = data.get(key);
                 if (value != null) acceptIntent.putExtra(key, value);
             }
@@ -198,7 +198,10 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
             declineIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             declineIntent.putExtra("type", "incoming_call");
             declineIntent.putExtra("call_action", "decline");
+            declineIntent.putExtra("callId", data.getOrDefault("callId", ""));
             declineIntent.putExtra("conversationId", conversationId);
+            declineIntent.putExtra("mode", data.getOrDefault("mode", "audio"));
+            declineIntent.putExtra("callerName", title);
             PendingIntent decline = PendingIntent.getActivity(this, requestCode + 2, declineIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
             if (Build.VERSION.SDK_INT >= 31) {
