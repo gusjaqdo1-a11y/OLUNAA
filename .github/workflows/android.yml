@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,6 +28,8 @@ jobs:
         run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null || true
       - name: Install Android SDK components
         run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Configure Gradle cache
+        uses: gradle/actions/setup-gradle@v6
       - name: Build release APK
         working-directory: android
         run: gradle assembleRelease
