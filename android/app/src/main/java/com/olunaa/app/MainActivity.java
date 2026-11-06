@@ -361,9 +361,10 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(dp(4), dp(9), dp(5), dp(9));
-        row.setBackgroundColor(Color.TRANSPARENT);
-        row.setMinimumHeight(dp(78));
+        row.setPadding(dp(9), dp(9), dp(9), dp(9));
+        row.setBackground(glass(20));
+        row.setElevation(dp(1));
+        row.setMinimumHeight(dp(82));
         row.setClickable(true);
         row.setFocusable(true);
 
@@ -456,7 +457,7 @@ public class MainActivity extends AppCompatActivity {
             badge.setTypeface(null, 1);
             badge.setMinWidth(dp(20));
             badge.setPadding(dp(5), 0, dp(5), 0);
-            badge.setBackground(rounded(Color.rgb(37, 190, 105), dp(20)));
+            badge.setBackground(rounded(Color.rgb(139, 92, 246), dp(20)));
             LinearLayout.LayoutParams badgeLp = new LinearLayout.LayoutParams(-2, dp(20));
             badgeLp.leftMargin = dp(7);
             previewLine.addView(badge, badgeLp);
@@ -468,15 +469,7 @@ public class MainActivity extends AppCompatActivity {
         info.addView(previewLine, new LinearLayout.LayoutParams(-1, dp(25)));
         row.addView(info, new LinearLayout.LayoutParams(0, dp(62), 1));
 
-        View divider = new View(this);
-        divider.setBackgroundColor(Color.argb(dark ? 34 : 24, 145, 165, 195));
-        LinearLayout item = new LinearLayout(this);
-        item.setOrientation(LinearLayout.VERTICAL);
-        item.addView(row, new LinearLayout.LayoutParams(-1, dp(82)));
-        LinearLayout.LayoutParams dividerLp = new LinearLayout.LayoutParams(-1, dp(1));
-        dividerLp.leftMargin = dp(73);
-        item.addView(divider, dividerLp);
-        body.addView(item, lp(-2, 0));
+        body.addView(row, lp(dp(84), dp(7)));
         row.setOnClickListener(v -> openChat(c.optString("id"), displayName, o.optString("avatarUrl", ""), false, o.optBoolean("verified")));
     }
 
