@@ -413,7 +413,31 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadChannels(){heading("Communities","Public channels and announcements.");api("/channels","GET",null,r->{if(!r.ok){message(r.error);return;}JSONArray a=r.data.optJSONArray("channels");if(a==null||a.length()==0){empty("No communities yet","Public communities will appear here.");return;}for(int i=0;i<a.length();i++){JSONObject c=a.optJSONObject(i);if(c!=null)channelRow(c);}});}
     private void channelRow(JSONObject c){LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);ImageView av=avatar(c.optString("avatarUrl",""),1);row.addView(av,new LinearLayout.LayoutParams(dp(54),dp(54)));LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(12),0,0,0);TextView n=tv(c.optString("name","Community"),16,text());n.setTypeface(null,1);info.addView(n);if(c.optBoolean("verified")){ImageView tick=new ImageView(this);tick.setImageResource(R.drawable.ic_verified_blue);info.addView(tick,new LinearLayout.LayoutParams(dp(18),dp(18)));}String publicId=c.optString("channelNumber","");info.addView(tv(publicId.isEmpty()?"@"+c.optString("handle",""):publicId,12,muted()));info.addView(tv(c.optString("description","Public channel"),12,muted()));row.addView(info,new LinearLayout.LayoutParams(0,dp(70),1));body.addView(row,lp(dp(76),dp(7)));row.setOnClickListener(v->openChannel(c.optString("channelNumber","").isEmpty()?c.optString("handle",""):c.optString("channelNumber","")));row.setOnLongClickListener(v->{showChannelSettings(c);return true;});}
-    private void openChannel(String h){String key=h.startsWith("+")?"number":"handle";api("/channels?"+key+"="+URLEncoder.encode(h,StandardCharsets.UTF_8),"GET",null,r->{if(!r.ok){message(r.error);return;}JSONObject c=r.data.optJSONObject("channel");if(c==null)return;StringBuilder feed=new StringBuilder(c.optString("description","")).append("\n\n");JSONArray msgs=c.optJSONArray("messages");if(msgs!=null)for(int i=0;i<Math.min(msgs.length(),10);i++){JSONObject m=msgs.optJSONObject(i);if(m!=null)feed.append(m.optString("body","")).append("\n\n");}new AlertDialog.Builder(this).setTitle(c.optString("name","Community")).setMessage(feed.toString()).setPositiveButton("Close",null).show();});}
+    private void openChannel(String h){
+        String key=h.startsWith("+")?"number":"handle";
+        api("/channels?"+key+"="+URLEncoder.encode(h,StandardCharsets.UTF_8),"GET",null,r->{
+            if(!r.ok){message(r.error);return;}
+            JSONObject c=r.data.optJSONObject("channel");if(c==null)return;
+            ScrollView scroll=new ScrollView(this);
+            LinearLayout feed=new LinearLayout(this);feed.setOrientation(LinearLayout.VERTICAL);feed.setPadding(dp(12),dp(10),dp(12),dp(12));scroll.addView(feed);
+            TextView description=tv(c.optString("description","Official OLUNAA channel"),13,muted());feed.addView(description,lp(-2,dp(10)));
+            JSONArray posts=c.optJSONArray("messages");
+            if(posts!=null)for(int i=posts.length()-1;i>=0;i--){
+                JSONObject post=posts.optJSONObject(i);if(post==null)continue;
+                LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(12),dp(12),dp(12),dp(12));card.setBackground(rounded(card(),dp(18)));
+                String body=post.optString("body","");if(!body.isEmpty())card.addView(tv(body,14,text()),lp(-2,dp(8)));
+                String media=post.optString("mediaUrl",""),type=post.optString("mediaType","");
+                if(!media.isEmpty()&&type.startsWith("image")){
+                    ImageView photo=new ImageView(this);photo.setScaleType(ImageView.ScaleType.CENTER_CROP);photo.setBackground(rounded(field(),dp(12)));photo.setClipToOutline(true);card.addView(photo,lp(dp(220),dp(8)));loadImage(photo,media);
+                }else if(!media.isEmpty()&&type.startsWith("video")&&media.startsWith("http")){
+                    android.widget.VideoView video=new android.widget.VideoView(this);video.setVideoURI(android.net.Uri.parse(media));card.addView(video,lp(dp(220),dp(8)));video.setOnPreparedListener(player->{player.setLooping(false);});video.setOnClickListener(v->video.start());
+                }
+                String created=post.optString("createdAt","");if(created.length()>=16)card.addView(tv(created.substring(0,16).replace("T"," "),10,muted()));
+                feed.addView(card,lp(-2,dp(9)));
+            }
+            new AlertDialog.Builder(this).setTitle(c.optString("name","Community")+"  ✓").setView(scroll).setPositiveButton("Close",null).show();
+        });
+    }
 
     private void showChannelSettings(JSONObject channel){
         String id=channel.optString("id","");if(id.isEmpty()){message("Channel details are unavailable.");return;}
