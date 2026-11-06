@@ -686,7 +686,91 @@ public class MainActivity extends AppCompatActivity {
     private void statusStoryChip(JSONArray stories,LinearLayout target){JSONObject first=stories.optJSONObject(0),u=first==null?null:first.optJSONObject("user");if(first==null)return;boolean mine=meId.equals(first.optString("userId"));FrameLayout chip=new FrameLayout(this);LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(dp(78),dp(104));cp.setMargins(0,0,dp(12),0);FrameLayout ring=new FrameLayout(this);GradientDrawable border=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(139,92,246),Color.rgb(34,211,238),Color.rgb(52,211,153)});border.setShape(GradientDrawable.OVAL);ring.setBackground(border);FrameLayout.LayoutParams rp=new FrameLayout.LayoutParams(dp(72),dp(72),Gravity.TOP|Gravity.CENTER_HORIZONTAL);chip.addView(ring,rp);ImageView photo=avatar(u==null?"":u.optString("avatarUrl",""),1);GradientDrawable inner=rounded(dark?Color.rgb(10,8,32):Color.WHITE,dp(999));photo.setBackground(inner);FrameLayout.LayoutParams ap=new FrameLayout.LayoutParams(dp(64),dp(64),Gravity.CENTER);ap.setMargins(dp(4),dp(4),dp(4),dp(4));ring.addView(photo,ap);TextView label=tv(mine?"Your story":u==null?"OLUNAA":u.optString("displayName","User"),10,text());label.setGravity(Gravity.CENTER);label.setSingleLine(true);label.setEllipsize(android.text.TextUtils.TruncateAt.END);FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(-1,dp(24),Gravity.BOTTOM);chip.addView(label,lp);target.addView(chip,cp);chip.setOnClickListener(v->{if(mine)showMyStatuses(stories);else viewStatus(stories.optJSONObject(stories.length()-1));});}
     private void statusRow(JSONArray stories){JSONObject first=stories.optJSONObject(0),u=first==null?null:first.optJSONObject("user");if(first==null)return;boolean mine=meId.equals(first.optString("userId"));int totalViews=0;for(int i=0;i<stories.length();i++){JSONArray v=stories.optJSONObject(i).optJSONArray("views");if(v!=null)totalViews+=v.length();}LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(8),dp(8),dp(8),dp(8));row.setBackground(glass(22));ImageView av=avatar(u==null?"":u.optString("avatarUrl",""),1);row.addView(av,new LinearLayout.LayoutParams(dp(52),dp(52)));LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(12),0,0,0);TextView name=tv(mine?"Your story":u==null?"OLUNAA user":u.optString("displayName","User"),15,text());name.setTypeface(null,1);info.addView(name);info.addView(tv(u==null?"":("@"+u.optString("username","")),12,muted()));info.addView(tv(stories.length()+" story update(s)  •  "+totalViews+" views",12,GREEN));row.addView(info,new LinearLayout.LayoutParams(0,dp(60),1));TextView arrow=tv("›",26,muted());row.addView(arrow);body.addView(row,lp(dp(76),dp(8)));row.setOnClickListener(v->{if(mine)showMyStatuses(stories);else viewStatus(stories.optJSONObject(stories.length()-1));});}
     private void showMyStatuses(JSONArray stories){LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);for(int i=0;i<stories.length();i++){JSONObject st=stories.optJSONObject(i);if(st==null)continue;JSONArray viewers=st.optJSONArray("views");StringBuilder names=new StringBuilder((viewers==null?0:viewers.length())+" views");if(viewers!=null)for(int k=0;k<viewers.length();k++){JSONObject view=viewers.optJSONObject(k),person=view==null?null:view.optJSONObject("viewer");if(person!=null)names.append("\n").append(person.optString("displayName","User")).append("  @").append(person.optString("username",""));}LinearLayout item=new LinearLayout(this);item.setGravity(Gravity.CENTER_VERTICAL);item.setPadding(dp(10),dp(8),dp(10),dp(8));item.setBackground(rounded(card(),dp(16)));LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.addView(tv(st.optString("caption","Photo/video status"),14,text()));info.addView(tv(names.toString(),11,muted()));item.addView(info,new LinearLayout.LayoutParams(0,-2,1));Button del=btn("Delete",false);item.addView(del,new LinearLayout.LayoutParams(dp(86),dp(42)));del.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Delete status?").setMessage("This status and its view history will be deleted.").setNegativeButton("Cancel",null).setPositiveButton("Delete",(d,w)->{JSONObject j=new JSONObject();try{j.put("storyId",st.optString("id"));}catch(Exception ignored){}api("/status","DELETE",j,r->{if(!r.ok)message(r.error);else{message("Status deleted.");showHome("Updates");}});}).show());list.addView(item,lp(-2,dp(7)));}new AlertDialog.Builder(this).setTitle("Your status • Viewers").setView(list).setPositiveButton("Close",null).show();}
-    private void viewStatus(JSONObject st){if(st==null)return;JSONObject j=new JSONObject();try{j.put("storyId",st.optString("id"));}catch(Exception ignored){}api("/status","PUT",j,r->{if(!r.ok)message(r.error);});LinearLayout content=new LinearLayout(this);content.setOrientation(LinearLayout.VERTICAL);String media=st.optString("mediaUrl","");if(media.startsWith("data:video/"))content.addView(videoPreview(media),new LinearLayout.LayoutParams(-1,dp(300)));else{ImageView preview=avatar("",1);if(!media.isEmpty())loadImage(preview,media);content.addView(preview,new LinearLayout.LayoutParams(-1,dp(300)));}content.addView(tv(st.optString("caption",""),14,text()));new AlertDialog.Builder(this).setTitle("Status").setView(content).setPositiveButton("Close",null).show();}
+    private void viewStatus(JSONObject st){
+        if(st==null)return;
+        JSONObject seenPayload=new JSONObject();
+        try{seenPayload.put("storyId",st.optString("id"));}catch(Exception ignored){}
+        api("/status","PUT",seenPayload,r->{if(!r.ok)android.util.Log.w("OLUNAA","Could not mark story as viewed: "+r.error);});
+
+        rootBase();
+        FrameLayout viewer=new FrameLayout(this);
+        viewer.setBackground(gradient(Color.rgb(12,9,35),Color.rgb(22,18,58),0));
+        root.addView(viewer,new LinearLayout.LayoutParams(-1,-1));
+
+        String media=st.optString("mediaUrl","");
+        if(media.startsWith("data:video/")){
+            VideoView video=videoPreview(media);
+            viewer.addView(video,new FrameLayout.LayoutParams(-1,-1));
+        }else if(media.startsWith("http")&&st.optString("mediaType","").startsWith("video")){
+            VideoView video=new VideoView(this);
+            video.setVideoURI(Uri.parse(media));
+            viewer.addView(video,new FrameLayout.LayoutParams(-1,-1));
+            video.setOnPreparedListener(player->{player.setLooping(true);video.start();});
+        }else{
+            ImageView photo=new ImageView(this);
+            photo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            photo.setBackgroundColor(Color.rgb(12,9,35));
+            viewer.addView(photo,new FrameLayout.LayoutParams(-1,-1));
+            if(!media.isEmpty())loadImage(photo,media);
+        }
+
+        View shadeTop=new View(this);
+        shadeTop.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(205,0,0,0),Color.TRANSPARENT}));
+        FrameLayout.LayoutParams shadeTopLp=new FrameLayout.LayoutParams(-1,dp(150),Gravity.TOP);
+        viewer.addView(shadeTop,shadeTopLp);
+
+        LinearLayout header=new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(14),dp(12),dp(14),dp(8));
+        ProgressBar progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
+        progress.setMax(100);progress.setProgress(100);
+        progress.setProgressTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));
+        progress.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.argb(90,255,255,255)));
+        LinearLayout.LayoutParams progressLp=new LinearLayout.LayoutParams(-1,dp(3));
+        progressLp.bottomMargin=dp(12);
+        header.addView(progress,progressLp);
+
+        LinearLayout identity=new LinearLayout(this);
+        identity.setGravity(Gravity.CENTER_VERTICAL);
+        JSONObject owner=st.optJSONObject("user");
+        String ownerName=owner==null?"OLUNAA user":owner.optString("displayName","OLUNAA user");
+        String ownerAvatar=owner==null?"":owner.optString("avatarUrl","");
+        ImageView ownerPhoto=avatar(ownerAvatar,1);
+        identity.addView(ownerPhoto,new LinearLayout.LayoutParams(dp(40),dp(40)));
+        LinearLayout ownerInfo=new LinearLayout(this);
+        ownerInfo.setOrientation(LinearLayout.VERTICAL);
+        ownerInfo.setPadding(dp(10),0,0,0);
+        TextView ownerTitle=tv(ownerName,14,Color.WHITE);ownerTitle.setTypeface(null,1);
+        ownerInfo.addView(ownerTitle);
+        String created=st.optString("createdAt","");
+        String when=created.length()>=16?created.substring(11,16):"OLUNAA story";
+        ownerInfo.addView(tv(when,11,Color.argb(205,255,255,255)));
+        identity.addView(ownerInfo,new LinearLayout.LayoutParams(0,dp(44),1));
+        TextView close=tv("×",30,Color.WHITE);close.setGravity(Gravity.CENTER);close.setContentDescription("Close story");
+        identity.addView(close,new LinearLayout.LayoutParams(dp(42),dp(44)));
+        close.setOnClickListener(v->showHome("Updates"));
+        LinearLayout headerColumn=new LinearLayout(this);
+        headerColumn.setOrientation(LinearLayout.VERTICAL);
+        headerColumn.addView(header,new LinearLayout.LayoutParams(-1,dp(3)));
+        headerColumn.addView(identity,new LinearLayout.LayoutParams(-1,dp(54)));
+        FrameLayout.LayoutParams headerLp=new FrameLayout.LayoutParams(-1,-2,Gravity.TOP);
+        viewer.addView(headerColumn,headerLp);
+
+        String caption=st.optString("caption","");
+        if(!caption.isEmpty()){
+            LinearLayout bottom=new LinearLayout(this);
+            bottom.setOrientation(LinearLayout.VERTICAL);
+            bottom.setPadding(dp(18),dp(14),dp(18),dp(18));
+            bottom.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP,new int[]{Color.argb(225,8,7,25),Color.argb(0,8,7,25)}));
+            TextView captionText=tv(caption,17,Color.WHITE);
+            captionText.setLineSpacing(dp(3),1f);
+            bottom.addView(captionText);
+            FrameLayout.LayoutParams bottomLp=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM);
+            viewer.addView(bottom,bottomLp);
+        }
+        viewer.setFocusableInTouchMode(true);
+        viewer.requestFocus();
+    }
 
     private void loadChannels(){heading("Communities","Public channels and announcements.");api("/channels","GET",null,r->{if(!r.ok){message(r.error);return;}JSONArray a=r.data.optJSONArray("channels");if(a==null||a.length()==0){empty("No communities yet","Public communities will appear here.");return;}for(int i=0;i<a.length();i++){JSONObject c=a.optJSONObject(i);if(c!=null)channelRow(c);}});}
     private void channelRow(JSONObject c){
