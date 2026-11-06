@@ -38,7 +38,7 @@ import io.ably.lib.types.Param;
 public class MainActivity extends AppCompatActivity {
     private static final String API="https://olunaa.vercel.app/api";
     private static final int REQ_MEDIA=701, REQ_NOTIF=702, REQ_MEDIA_PERMISSION=703, REQ_CAMERA=704, REQ_DOCUMENT=705, REQ_LOCATION=706;
-    private static final int GREEN=Color.rgb(32,199,122), GREEN2=Color.rgb(13,148,96), BG_D=Color.rgb(7,16,21), SURFACE_D=Color.rgb(11,21,25), CARD_D=Color.rgb(17,27,31), FIELD_D=Color.rgb(29,39,44), TEXT_D=Color.rgb(237,242,244), MUTED_D=Color.rgb(126,141,146);
+    private static final int GREEN=Color.rgb(64,139,255), GREEN2=Color.rgb(38,92,224), BG_D=Color.rgb(7,12,25), SURFACE_D=Color.rgb(13,20,38), CARD_D=Color.rgb(20,29,51), FIELD_D=Color.rgb(29,42,68), TEXT_D=Color.rgb(237,242,244), MUTED_D=Color.rgb(126,141,146);
     private static final int BG_L=Color.rgb(246,249,248), SURFACE_L=Color.WHITE, CARD_L=Color.rgb(239,245,242), FIELD_L=Color.rgb(232,240,236), TEXT_L=Color.rgb(20,32,27), MUTED_L=Color.rgb(103,120,111);
     private final ExecutorService io=Executors.newCachedThreadPool();
     private final Handler main=new Handler(Looper.getMainLooper());
@@ -364,7 +364,7 @@ public class MainActivity extends AppCompatActivity {
     private void openChat(String id,String name,String av,boolean isGroup,boolean verified){
         if(id==null||id.trim().isEmpty())return;if(id.equals(activeConversation)&&chatReplyHint!=null)return;
         activeHomeTab="";activeConversation=id;activeOtherName=name;activeOtherAvatar=av;lastRenderedMessagesKey="";stopPoll();stopChatRealtime();rootBase();
-        LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);top.setPadding(dp(2),dp(5),dp(2),dp(8));top.setBackground(gradient(Color.rgb(9,47,34),Color.rgb(7,25,22),dp(22)));
+        LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);top.setPadding(dp(2),dp(5),dp(2),dp(8));top.setBackground(gradient(Color.rgb(16,43,91),Color.rgb(8,19,43),dp(22)));
         TextView back=tv("‹",34,text());back.setGravity(Gravity.CENTER);top.addView(back,new LinearLayout.LayoutParams(dp(40),dp(54)));
         ImageView img=avatar(av,1);top.addView(img,new LinearLayout.LayoutParams(dp(46),dp(46)));
         LinearLayout title=new LinearLayout(this);title.setOrientation(LinearLayout.VERTICAL);title.setPadding(dp(9),0,0,0);
@@ -375,7 +375,7 @@ public class MainActivity extends AppCompatActivity {
         ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.setSmoothScrollingEnabled(true);sc.setOverScrollMode(View.OVER_SCROLL_NEVER);
         LinearLayout messages=new LinearLayout(this);messages.setOrientation(LinearLayout.VERTICAL);messages.setPadding(dp(5),dp(12),dp(5),dp(14));sc.addView(messages);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
         chatReplyHint=tv("",11,GREEN);chatReplyHint.setPadding(dp(12),dp(6),dp(12),dp(6));chatReplyHint.setVisibility(View.GONE);root.addView(chatReplyHint,lp(-2,0));
-        LinearLayout composer=new LinearLayout(this);composer.setGravity(Gravity.CENTER_VERTICAL);composer.setPadding(dp(5),dp(6),dp(5),dp(6));composer.setBackground(gradient(Color.rgb(17,39,31),Color.rgb(9,25,21),dp(25)));
+        LinearLayout composer=new LinearLayout(this);composer.setGravity(Gravity.CENTER_VERTICAL);composer.setPadding(dp(5),dp(6),dp(5),dp(6));composer.setBackground(gradient(Color.rgb(18,38,78),Color.rgb(9,20,48),dp(25)));
         ImageView attach=new ImageView(this);attach.setImageResource(R.drawable.ic_action_attach);attach.setImageTintList(android.content.res.ColorStateList.valueOf(GREEN));attach.setPadding(dp(7),dp(7),dp(7),dp(7));composer.addView(attach,new LinearLayout.LayoutParams(dp(38),dp(50)));
         EditText textBox=input("Message OLUNAA…");textBox.setSingleLine(true);textBox.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
         composer.addView(textBox,new LinearLayout.LayoutParams(0,dp(50),1));
