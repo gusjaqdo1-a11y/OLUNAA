@@ -284,10 +284,12 @@ public class MainActivity extends AppCompatActivity {
         name.setTypeface(null, 1);
         titleLine.addView(name);
         if (o.optBoolean("verified")) {
-            TextView verified = tv("✓", 13, Color.rgb(65, 151, 255));
-            verified.setTypeface(null, 1);
-            verified.setPadding(dp(5), 0, 0, 0);
-            titleLine.addView(verified);
+            ImageView verified = new ImageView(this);
+            verified.setImageResource(R.drawable.ic_verified_blue);
+            verified.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+            LinearLayout.LayoutParams verifiedLp = new LinearLayout.LayoutParams(dp(18), dp(18));
+            verifiedLp.leftMargin = dp(4);
+            titleLine.addView(verified, verifiedLp);
         }
         info.addView(titleLine);
         TextView handle = tv("@" + o.optString("username", ""), 10, muted());
