@@ -8,6 +8,7 @@ import android.database.Cursor;
 import android.provider.MediaStore;
 import android.graphics.*;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.*;
 import android.text.InputType;
@@ -61,6 +62,25 @@ public class MainActivity extends AppCompatActivity {
     private int bg(){return dark?BG_D:BG_L;} private int surface(){return dark?SURFACE_D:SURFACE_L;}
     private int card(){return dark?CARD_D:CARD_L;} private int field(){return dark?FIELD_D:FIELD_L;}
     private int text(){return dark?TEXT_D:TEXT_L;} private int muted(){return dark?MUTED_D:MUTED_L;}
+    private final class LiquidBackground extends Drawable {
+        private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
+        @Override public void draw(Canvas canvas){
+            Rect bounds=getBounds();float w=bounds.width(),h=bounds.height();
+            int top=dark?Color.rgb(10,8,32):Color.rgb(239,235,255);
+            int bottom=dark?Color.rgb(13,20,48):Color.rgb(218,242,255);
+            paint.setShader(new LinearGradient(0,0,w,h,top,bottom,Shader.TileMode.CLAMP));
+            canvas.drawRect(bounds,paint);
+            paint.setShader(new RadialGradient(w*.12f,h*.12f,Math.max(w,h)*.62f,
+                new int[]{Color.argb(dark?76:45,139,92,246),Color.TRANSPARENT},null,Shader.TileMode.CLAMP));
+            canvas.drawRect(bounds,paint);
+            paint.setShader(new RadialGradient(w*.92f,h*.48f,Math.max(w,h)*.48f,
+                new int[]{Color.argb(dark?54:36,34,211,238),Color.TRANSPARENT},null,Shader.TileMode.CLAMP));
+            canvas.drawRect(bounds,paint);paint.setShader(null);
+        }
+        @Override public void setAlpha(int alpha){paint.setAlpha(alpha);}
+        @Override public void setColorFilter(android.graphics.ColorFilter filter){paint.setColorFilter(filter);}
+        @Override public int getOpacity(){return android.graphics.PixelFormat.OPAQUE;}
+    }
     private GradientDrawable rounded(int c,float r){GradientDrawable g=new GradientDrawable();g.setColor(c);g.setCornerRadius(r);return g;}
     private GradientDrawable gradient(int a,int b,float r){GradientDrawable g=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{a,b});g.setCornerRadius(r);return g;}
     private GradientDrawable glass(int radius){GradientDrawable g=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.argb(dark?224:238,dark?20:255,dark?31:255,dark?58:255),Color.argb(dark?198:220,dark?9:230,dark?22:242,dark?43:255)});g.setCornerRadius(dp(radius));g.setStroke(dp(1),Color.argb(dark?48:55,170,205,255));return g;}
@@ -69,12 +89,12 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout.LayoutParams lp(int h,int b){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,h);p.setMargins(0,0,0,b);return p;}
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private void rootBase(){
-        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackground(dark?gradient(Color.rgb(10,8,32),Color.rgb(15,24,52),dp(0)):gradient(Color.rgb(233,230,255),Color.rgb(213,243,255),dp(0)));root.setPadding(dp(12),0,dp(12),0);setContentView(root);
+        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackground(new LiquidBackground());root.setPadding(dp(12),0,dp(12),0);setContentView(root);
         ViewCompat.setOnApplyWindowInsetsListener(root,(v,in)->{androidx.core.graphics.Insets x=in.getInsets(WindowInsetsCompat.Type.systemBars()|WindowInsetsCompat.Type.displayCutout());v.setPadding(dp(12)+x.left,x.top+dp(8),dp(12)+x.right,x.bottom+dp(6));return in;});
         ViewCompat.requestApplyInsets(root);
     }
     private EditText input(String hint){EditText e=new EditText(this);e.setHint(hint);e.setHintTextColor(muted());e.setTextColor(text());e.setTextSize(15);e.setSingleLine(true);e.setPadding(dp(18),0,dp(18),0);e.setBackground(rounded(field(),dp(18)));return e;}
-    private Button btn(String s,boolean primary){Button b=new Button(this);b.setText(s);b.setTextColor(primary?Color.WHITE:text());b.setTextSize(14);b.setAllCaps(false);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(14),0,dp(14),0);GradientDrawable shape=primary?gradient(GREEN,GREEN2,dp(18)):rounded(dark?Color.rgb(22,39,63):card(),dp(18));shape.setStroke(dp(1),primary?Color.argb(95,164,220,255):Color.argb(42,160,195,235));b.setBackground(shape);b.setElevation(primary?dp(5):dp(1));return b;}
+    private Button btn(String s,boolean primary){Button b=new Button(this);b.setText(s);b.setTextColor(primary?Color.WHITE:text());b.setTextSize(14);b.setAllCaps(false);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(14),0,dp(14),0);GradientDrawable shape=primary?gradient(Color.rgb(139,92,246),Color.rgb(34,211,238),dp(18)):rounded(dark?Color.rgb(22,39,63):card(),dp(18));shape.setStroke(dp(1),primary?Color.argb(95,164,220,255):Color.argb(42,160,195,235));b.setBackground(shape);b.setElevation(primary?dp(5):dp(1));return b;}
     private ImageView logo(int size){ImageView im=new ImageView(this);im.setImageResource(R.drawable.ic_olunaa);im.setScaleType(ImageView.ScaleType.CENTER_INSIDE);return im;}
     private ImageView avatar(String url,int size){ImageView im=new ImageView(this);im.setScaleType(ImageView.ScaleType.CENTER_CROP);im.setBackground(rounded(field(),dp(999)));im.setClipToOutline(true);im.setOutlineProvider(android.view.ViewOutlineProvider.BACKGROUND);im.setContentDescription("Profile photo");im.setPadding(0,0,0,0);if(url!=null&&!url.isEmpty())loadImage(im,url);return im;}
     private Bitmap decodeScaledImage(byte[] bytes, int maxDimension) {
@@ -192,7 +212,7 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);top.setPadding(dp(10),dp(8),dp(10),dp(8));top.setBackground(glass(24));
         top.addView(logo(1),new LinearLayout.LayoutParams(dp(42),dp(46)));
         LinearLayout titleBox=new LinearLayout(this);titleBox.setOrientation(LinearLayout.VERTICAL);titleBox.setPadding(dp(7),0,0,0);
-        TextView title=tv(tab.equals("Chats")?"OLUNAA":tab,21,text());title.setTypeface(null,1);
+        TextView title=tv(tab.equals("Chats")?"OLUNAA":tab.equals("Updates")?"Stories":tab,21,text());title.setTypeface(null,1);
         TextView sub=tv(tab.equals("Chats")?"Private messaging  •  @"+meUsername:"@"+meUsername,11,muted());titleBox.addView(title);titleBox.addView(sub);
         top.addView(titleBox,new LinearLayout.LayoutParams(0,dp(48),1));
         TextView newChat=tv("＋",22,text());newChat.setGravity(Gravity.CENTER);newChat.setTypeface(null,0);newChat.setPadding(0,0,0,0);newChat.setBackground(rounded(card(),dp(16)));
@@ -202,8 +222,8 @@ public class MainActivity extends AppCompatActivity {
         if(tab.equals("Chats")){LinearLayout searchWrap=new LinearLayout(this);searchWrap.setGravity(Gravity.CENTER_VERTICAL);searchWrap.setPadding(dp(14),0,dp(12),0);searchWrap.setBackground(rounded(field(),dp(16)));ImageView glyph=new ImageView(this);glyph.setImageResource(R.drawable.ic_action_search);glyph.setImageTintList(android.content.res.ColorStateList.valueOf(muted()));searchWrap.addView(glyph,new LinearLayout.LayoutParams(dp(24),dp(48)));EditText query=input("Search chats, people or groups");query.setBackgroundColor(Color.TRANSPARENT);query.setPadding(0,0,0,0);searchWrap.addView(query,new LinearLayout.LayoutParams(0,dp(48),1));root.addView(searchWrap,lp(dp(50),dp(10)));searchWrap.setOnClickListener(v->showSearch());query.setOnClickListener(v->showSearch());}
         body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.addView(body);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
         LinearLayout nav=new LinearLayout(this);GradientDrawable navBackground=glass(28);nav.setBackground(navBackground);nav.setPadding(dp(4),dp(5),dp(4),dp(5));
-        String[] labels={"Chats","Stories","Communities","Calls","Settings"};int[] navIcons={R.drawable.ic_nav_chats,R.drawable.ic_nav_updates,R.drawable.ic_nav_communities,R.drawable.ic_nav_calls,R.drawable.ic_nav_settings};
-        for(int i=0;i<labels.length;i++){final String n=labels[i];boolean selected=n.equals(tab)||(n.equals("Stories")&&tab.equals("Updates"));LinearLayout item=new LinearLayout(this);item.setOrientation(LinearLayout.VERTICAL);item.setGravity(Gravity.CENTER);item.setBackground(selected?rounded(Color.argb(dark?38:22,67,139,255),dp(15)):rounded(Color.TRANSPARENT,dp(15)));ImageView icon=new ImageView(this);icon.setImageResource(navIcons[i]);icon.setImageTintList(android.content.res.ColorStateList.valueOf(selected?GREEN:muted()));icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);TextView t=tv(n,10,selected?GREEN:muted());t.setTypeface(null,selected?1:0);t.setGravity(Gravity.CENTER);item.addView(icon,new LinearLayout.LayoutParams(-1,dp(27)));item.addView(t,new LinearLayout.LayoutParams(-1,dp(19)));item.setOnClickListener(v->{if("Settings".equals(n))showSettings();else showHome("Stories".equals(n)?"Updates":n);});nav.addView(item,new LinearLayout.LayoutParams(0,dp(52),1));}
+        String[] labels={"Chats","Calls","Stories","Communities","Settings"};int[] navIcons={R.drawable.ic_nav_chats,R.drawable.ic_nav_calls,R.drawable.ic_nav_updates,R.drawable.ic_nav_communities,R.drawable.ic_nav_settings};
+        for(int i=0;i<labels.length;i++){final String n=labels[i];boolean selected=n.equals(tab)||(n.equals("Stories")&&tab.equals("Updates"));LinearLayout item=new LinearLayout(this);item.setOrientation(LinearLayout.VERTICAL);item.setGravity(Gravity.CENTER);item.setBackground(selected?rounded(Color.argb(dark?42:26,139,92,246),dp(15)):rounded(Color.TRANSPARENT,dp(15)));ImageView icon=new ImageView(this);icon.setImageResource(navIcons[i]);icon.setImageTintList(android.content.res.ColorStateList.valueOf(selected?Color.rgb(167,139,250):muted()));icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);TextView t=tv(n,10,selected?GREEN:muted());t.setTypeface(null,selected?1:0);t.setGravity(Gravity.CENTER);item.addView(icon,new LinearLayout.LayoutParams(-1,dp(27)));item.addView(t,new LinearLayout.LayoutParams(-1,dp(19)));item.setOnClickListener(v->{if("Settings".equals(n))showSettings();else showHome("Stories".equals(n)?"Updates":n);});nav.addView(item,new LinearLayout.LayoutParams(0,dp(52),1));}
         root.addView(nav,lp(dp(58),0));newChat.setOnClickListener(v->showSearch());newGroup.setOnClickListener(v->createGroupDialog());menu.setOnClickListener(v->showMenu());
         if(tab.equals("Chats"))loadChats();else if(tab.equals("Updates"))loadStatus();else if(tab.equals("Communities"))loadChannels();else if(tab.equals("Calls"))loadCalls();else if(tab.equals("Alerts"))loadNotifications();else if(tab.equals("Profile"))loadProfile();else showSettings();
     }
@@ -243,7 +263,7 @@ public class MainActivity extends AppCompatActivity {
         HorizontalScrollView strip=new HorizontalScrollView(this);strip.setHorizontalScrollBarEnabled(false);
         LinearLayout chips=new LinearLayout(this);chips.setOrientation(LinearLayout.HORIZONTAL);chips.setPadding(0,dp(3),0,dp(5));strip.addView(chips);
         LinearLayout own=new LinearLayout(this);own.setOrientation(LinearLayout.VERTICAL);own.setGravity(Gravity.CENTER);
-        FrameLayout ownRing=new FrameLayout(this);GradientDrawable ownBorder=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{GREEN,Color.rgb(34,211,238)});ownBorder.setShape(GradientDrawable.OVAL);ownRing.setBackground(ownBorder);
+        FrameLayout ownRing=new FrameLayout(this);GradientDrawable ownBorder=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(139,92,246),Color.rgb(34,211,238)});ownBorder.setShape(GradientDrawable.OVAL);ownRing.setBackground(ownBorder);
         TextView plus=tv("＋",25,Color.WHITE);plus.setGravity(Gravity.CENTER);plus.setBackground(rounded(Color.rgb(17,35,64),dp(999)));
         FrameLayout.LayoutParams plusLp=new FrameLayout.LayoutParams(dp(62),dp(62),Gravity.CENTER);plusLp.setMargins(dp(4),dp(4),dp(4),dp(4));ownRing.addView(plus,plusLp);
         own.addView(ownRing,new LinearLayout.LayoutParams(dp(72),dp(72)));
@@ -255,9 +275,17 @@ public class MainActivity extends AppCompatActivity {
             JSONArray all=r.data.optJSONArray("stories");if(all==null)return;
             LinkedHashMap<String,JSONArray> grouped=new LinkedHashMap<>();
             for(int i=0;i<all.length();i++){JSONObject item=all.optJSONObject(i);if(item==null)continue;JSONObject owner=item.optJSONObject("user");String key=owner==null?"unknown":owner.optString("id","unknown");if(!grouped.containsKey(key))grouped.put(key,new JSONArray());grouped.get(key).put(item);}
+            JSONArray mine=null;
             for(Map.Entry<String,JSONArray> entry:grouped.entrySet()){
-                JSONArray items=entry.getValue();JSONObject first=items.optJSONObject(0);if(first==null||meId.equals(first.optString("userId")))continue;
+                JSONArray items=entry.getValue();JSONObject first=items.optJSONObject(0);if(first==null)continue;
+                if(meId.equals(first.optString("userId"))){mine=items;continue;}
                 statusStoryChip(items,chips);
+            }
+            if(mine!=null){
+                chips.removeViewAt(0);
+                statusStoryChip(mine,chips);
+                View ownChip=chips.getChildAt(chips.getChildCount()-1);
+                if(ownChip!=null){chips.removeView(ownChip);chips.addView(ownChip,0);}
             }
         });
     }
