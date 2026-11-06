@@ -33,6 +33,7 @@ export async function POST(req: Request) {
       sender: { select: { id: true, displayName: true, username: true, avatarUrl: true } },
       poll: { include: { options: true, votes: { select: { userId: true, optionId: true } } } },
     },
+    include: { sender: { select: { id: true, displayName: true, username: true, avatarUrl: true } }, poll: { include: { options: true, votes: { select: { userId: true, optionId: true } } } } },
   });
   await db.conversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
   try { await publishConversationEvent(conversationId, "message:new", { message, conversationId }); }
