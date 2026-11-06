@@ -47,6 +47,16 @@ class LiveKitCallActivity : AppCompatActivity() {
     private var roomConnected = false
     private var remoteConnected = false
     private var seconds = 0
+    private var callFinished = false
+    private val callTimeout = Runnable {
+        if (!remoteConnected && !callFinished) {
+            callFinished = true
+            stopRingback()
+            status.text = "No answer"
+            detail.text = "The person may be offline or unable to receive this call."
+            handler.removeCallbacks(timer)
+        }
+    }
     private val handler = Handler(Looper.getMainLooper())
     private var previousAudioMode = AudioManager.MODE_NORMAL
     private var previousSpeakerState = false
@@ -83,8 +93,9 @@ class LiveKitCallActivity : AppCompatActivity() {
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         previousAudioMode = audioManager.mode
         previousSpeakerState = audioManager.isSpeakerphoneOn
-        window.statusBarColor = Color.rgb(5, 9, 22)
-        window.navigationBarColor = Color.rgb(5, 9, 22)
+        window.statusBarColor = Color.rgb(5, 11, 24)
+        window.navigationBarColor = Color.rgb(5, 11, 24)
+        window.setBackgroundDrawable(GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(5, 11, 24), Color.rgb(9, 28, 52))))
         buildUi()
         val needed = mutableListOf(Manifest.permission.RECORD_AUDIO)
         if (intent.getStringExtra("mode") == "video") needed.add(Manifest.permission.CAMERA)
@@ -131,11 +142,11 @@ class LiveKitCallActivity : AppCompatActivity() {
         root.addView(top, LinearLayout.LayoutParams(-1, dp(104)))
 
         val stage = FrameLayout(this).apply {
-            background = panel(Color.argb(95, 25, 42, 78), 34, Color.argb(90, 95, 139, 220))
+            background = panel(Color.argb(150, 15, 34, 59), 34, Color.argb(125, 85, 166, 245)).apply { setStroke(dp(1), Color.argb(100, 116, 196, 255)) }
         }
         avatar = label("O", 54f, Color.WHITE, true).apply {
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(45, 111, 255), Color.rgb(111, 75, 245))).apply { shape = GradientDrawable.OVAL }
+                intArrayOf(Color.rgb(50, 151, 255), Color.rgb(23, 91, 220))).apply { shape = GradientDrawable.OVAL }
         }
         val avatarSize = dp(if (videoMode) 160 else 184)
         stage.addView(avatar, FrameLayout.LayoutParams(avatarSize, avatarSize, Gravity.CENTER))
@@ -166,8 +177,8 @@ class LiveKitCallActivity : AppCompatActivity() {
     private fun addControl(row: LinearLayout, symbol: String, caption: String, action: () -> Unit): TextView {
         val item = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
         val button = label(symbol, 12f, Color.WHITE, true).apply {
-            background = panel(if (caption == "End") Color.rgb(224, 54, 77) else Color.rgb(35, 52, 83),
-                24, Color.argb(70, 140, 170, 230))
+            background = panel(if (caption == "End") Color.rgb(224, 54, 77) else Color.argb(205, 19, 47, 77),
+                24, Color.argb(115, 105, 183, 255)).apply { setStroke(dp(1), Color.argb(100, 140, 207, 255)) }
             setOnClickListener { action() }
         }
         item.addView(button, LinearLayout.LayoutParams(dp(62), dp(58)))
@@ -199,6 +210,8 @@ class LiveKitCallActivity : AppCompatActivity() {
                         }
                         is RoomEvent.ParticipantConnected -> runOnUiThread {
                             remoteConnected = true
+                            callFinished = true
+                            handler.removeCallbacks(callTimeout)
                             stopRingback()
                             status.text = "Connected"
                             detail.text = "00:00"
@@ -208,6 +221,8 @@ class LiveKitCallActivity : AppCompatActivity() {
                         }
                         is RoomEvent.ParticipantDisconnected -> runOnUiThread {
                             remoteConnected = false
+                            callFinished = true
+                            handler.removeCallbacks(callTimeout)
                             status.text = "Call ended"
                             detail.text = "The other person left the call."
                         }
@@ -217,15 +232,17 @@ class LiveKitCallActivity : AppCompatActivity() {
             }
             try {
                 status.text = "Calling…"
-                detail.text = "Waiting for the other person"
+                detail.text = "Connecting securely · checking availability"
                 room.connect(serverUrl, token)
                 room.localParticipant.setMicrophoneEnabled(true)
                 if (intent.getStringExtra("mode") == "video") room.localParticipant.setCameraEnabled(true)
                 roomConnected = true
                 if (!remoteConnected) {
-                    status.text = "Ringing…"
-                    detail.text = "Waiting for the other person to answer"
+                    status.text = "Calling…"
+                    detail.text = "Invitation sent · waiting for answer"
                     startRingback()
+                    handler.removeCallbacks(callTimeout)
+                    handler.postDelayed(callTimeout, 45000L)
                 }
             } catch (e: Exception) {
                 stopRingback()
@@ -271,6 +288,8 @@ class LiveKitCallActivity : AppCompatActivity() {
     }
 
     private fun endCall() {
+        callFinished = true
+        handler.removeCallbacks(callTimeout)
         stopRingback()
         handler.removeCallbacks(timer)
         if (::room.isInitialized) lifecycleScope.launch {
@@ -282,6 +301,7 @@ class LiveKitCallActivity : AppCompatActivity() {
     override fun onDestroy() {
         stopRingback()
         handler.removeCallbacks(timer)
+        handler.removeCallbacks(callTimeout)
         try {
             audioManager.isSpeakerphoneOn = previousSpeakerState
             audioManager.mode = previousAudioMode
