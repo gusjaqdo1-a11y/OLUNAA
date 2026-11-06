@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const mediaUrl = typeof body.mediaUrl === "string" ? body.mediaUrl : "";
   const mediaType = typeof body.mediaType === "string" ? body.mediaType : "";
   const channelId = typeof body.channelId === "string" ? body.channelId : "";
-  const createOnly = !postBody && !mediaUrl && !channelId && name.length >= 2 && /^\\+[0-9]{3,15}$/.test(number);
+  const createOnly = !postBody && !mediaUrl && !channelId && name.length >= 2 && /^\+[0-9]{3,15}$/.test(number);
   if (!postBody && !mediaUrl && !createOnly) return NextResponse.json({ error: "Add an announcement, photo or video, or provide valid channel details to create a channel." }, { status: 400 });
   if (mediaUrl.length > 3500000) return NextResponse.json({ error: "Media is too large. Use a compressed image or hosted media URL." }, { status: 413 });
   const adminUser = process.env.ADMIN_POST_AUTHOR_USERNAME
