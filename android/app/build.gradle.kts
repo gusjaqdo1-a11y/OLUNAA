@@ -1,5 +1,3 @@
-import java.security.SecureRandom
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -54,29 +52,8 @@ tasks.register("normalizeInsetsSource") {
 
 tasks.named("preBuild") { dependsOn("normalizeInsetsSource") }
 
-val mediaPack = file("$projectDir/src/main/assets/olunaa_media_pack.bin")
-val generateMediaPack = tasks.register("generateMediaPack") {
-    outputs.file(mediaPack)
-    doLast {
-        val targetBytes = 48L * 1024L * 1024L
-        if (!mediaPack.exists() || mediaPack.length() != targetBytes) {
-            mediaPack.parentFile.mkdirs()
-            val random = SecureRandom()
-            val buffer = ByteArray(1024 * 1024)
-            var remaining = targetBytes
-            mediaPack.outputStream().use { out ->
-                while (remaining > 0) {
-                    random.nextBytes(buffer)
-                    val count = minOf(buffer.size.toLong(), remaining).toInt()
-                    out.write(buffer, 0, count)
-                    remaining -= count
-                }
-            }
-        }
-    }
-}
-
-tasks.named("preBuild") { dependsOn(generateMediaPack) }
+// Do not generate dummy media files during builds. The previous 48 MB random
+// asset inflated every APK without providing any product functionality.
 
 if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
