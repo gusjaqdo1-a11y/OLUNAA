@@ -121,7 +121,10 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
                 intent.putExtra(entry.getKey(), entry.getValue());
             }
         }
-        PendingIntent pending = PendingIntent.getActivity(this, 7001, intent,
+        String conversationId = data == null ? "" : data.getOrDefault("conversationId", "");
+        String notificationType = data == null ? "" : data.getOrDefault("type", "");
+        int requestCode = (conversationId + ":" + notificationType).hashCode();
+        PendingIntent pending = PendingIntent.getActivity(this, requestCode, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT
                         | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
         Notification.Builder builder = Build.VERSION.SDK_INT >= 26
@@ -132,7 +135,7 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
                 .setAutoCancel(true)
                 .setContentIntent(pending)
                 .setPriority(Notification.PRIORITY_HIGH)
-                .setCategory(Notification.CATEGORY_MESSAGE);
+                .setCategory("incoming_call".equals(notificationType) ? Notification.CATEGORY_CALL : Notification.CATEGORY_MESSAGE);
         manager.notify((int) (System.currentTimeMillis() & 0x7fffffff), builder.build());
     }
 }
