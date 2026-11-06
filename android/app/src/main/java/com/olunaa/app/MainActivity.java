@@ -72,11 +72,72 @@ public class MainActivity extends AppCompatActivity {
     private Button btn(String s,boolean primary){Button b=new Button(this);b.setText(s);b.setTextColor(primary?Color.WHITE:text());b.setTextSize(14);b.setAllCaps(false);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(14),0,dp(14),0);b.setBackground(primary?gradient(GREEN,GREEN2,dp(18)):rounded(card(),dp(18)));return b;}
     private ImageView logo(int size){ImageView im=new ImageView(this);im.setImageResource(R.drawable.ic_olunaa);im.setScaleType(ImageView.ScaleType.CENTER_INSIDE);return im;}
     private ImageView avatar(String url,int size){ImageView im=new ImageView(this);im.setScaleType(ImageView.ScaleType.CENTER_CROP);im.setBackground(rounded(field(),100));im.setContentDescription("Profile photo");im.setPadding(2,2,2,2);if(url!=null&&!url.isEmpty())loadImage(im,url);return im;}
-    private void loadImage(ImageView im,String url){
-        Bitmap cached=imageCache.get(url);if(cached!=null){im.setImageBitmap(cached);return;}
-        if(url.startsWith("data:image")){try{byte[] r=android.util.Base64.decode(url.substring(url.indexOf(',')+1),android.util.Base64.DEFAULT);Bitmap b=BitmapFactory.decodeByteArray(r,0,r.length);if(b!=null){imageCache.put(url,b);im.setImageBitmap(b);}}catch(Exception ignored){}return;}
-        io.execute(()->{try{HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();c.setConnectTimeout(8000);c.setReadTimeout(12000);Bitmap b=BitmapFactory.decodeStream(c.getInputStream());c.disconnect();main.post(()->{if(b!=null){imageCache.put(url,b);im.setImageBitmap(b);}});}catch(Exception ignored){}});
+    private Bitmap decodeScaledImage(byte[] bytes, int maxDimension) {
+        if (bytes == null || bytes.length == 0) return null;
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+        int sample = 1;
+        int limit = Math.max(256, Math.min(960, maxDimension));
+        while (bounds.outWidth / sample > limit || bounds.outHeight / sample > limit) sample *= 2;
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = sample;
+        options.inPreferredConfig = Bitmap.Config.RGB_565;
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
     }
+
+    private void cacheImage(String url, Bitmap bitmap) {
+        if (bitmap == null) return;
+        imageCache.put(url, bitmap);
+        if (imageCache.size() > 100) {
+            Iterator<String> keys = imageCache.keySet().iterator();
+            if (keys.hasNext()) imageCache.remove(keys.next());
+        }
+    }
+
+    private void loadImage(ImageView im, String url) {
+        Bitmap cached = imageCache.get(url);
+        if (cached != null) { im.setImageBitmap(cached); return; }
+        if (url.startsWith("data:image")) {
+            try {
+                byte[] raw = android.util.Base64.decode(url.substring(url.indexOf(',') + 1), android.util.Base64.DEFAULT);
+                Bitmap bitmap = decodeScaledImage(raw, 720);
+                if (bitmap != null) { cacheImage(url, bitmap); im.setImageBitmap(bitmap); }
+            } catch (Exception ignored) { }
+            return;
+        }
+        io.execute(() -> {
+            HttpURLConnection connection = null;
+            try {
+                connection = (HttpURLConnection) new URL(url).openConnection();
+                connection.setConnectTimeout(6000);
+                connection.setReadTimeout(8000);
+                connection.setUseCaches(true);
+                connection.setRequestProperty("Accept", "image/avif,image/webp,image/*");
+                try (InputStream input = connection.getInputStream();
+                     ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                    byte[] buffer = new byte[8192];
+                    int count;
+                    int total = 0;
+                    while ((count = input.read(buffer)) != -1) {
+                        total += count;
+                        if (total > 8 * 1024 * 1024) throw new IOException("Image exceeds 8 MB");
+                        output.write(buffer, 0, count);
+                    }
+                    Bitmap bitmap = decodeScaledImage(output.toByteArray(), 720);
+                    if (bitmap != null) {
+                        cacheImage(url, bitmap);
+                        main.post(() -> im.setImageBitmap(bitmap));
+                    }
+                }
+            } catch (Exception ignored) {
+            } finally {
+                if (connection != null) connection.disconnect();
+            }
+        });
+    }
+
     @Override public void onCreate(Bundle b){
         super.onCreate(b);WindowCompat.enableEdgeToEdge(getWindow());getWindow().setStatusBarColor(Color.TRANSPARENT);getWindow().setNavigationBarColor(Color.TRANSPARENT);prefs=getSharedPreferences("olunaa_session",MODE_PRIVATE);
         String savedTheme=prefs.getString("theme","dark");dark=savedTheme.equals("system")?((getResources().getConfiguration().uiMode&android.content.res.Configuration.UI_MODE_NIGHT_MASK)==android.content.res.Configuration.UI_MODE_NIGHT_YES):!savedTheme.equals("light");
@@ -176,7 +237,100 @@ public class MainActivity extends AppCompatActivity {
     }
     private void showInviteGroupMember(String groupId){EditText query=input("Search by name, @username or email");LinearLayout results=new LinearLayout(this);results.setOrientation(LinearLayout.VERTICAL);ScrollView sc=new ScrollView(this);sc.addView(results);LinearLayout wrap=new LinearLayout(this);wrap.setOrientation(LinearLayout.VERTICAL);wrap.addView(query,lp(dp(52),dp(6)));wrap.addView(sc,new LinearLayout.LayoutParams(-1,dp(260)));query.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){String q=s.toString().trim();if(q.length()<2)return;api("/search?q="+URLEncoder.encode(q,StandardCharsets.UTF_8),"GET",null,r->{if(!r.ok)return;results.removeAllViews();JSONArray users=r.data.optJSONArray("users");if(users==null)return;for(int i=0;i<users.length();i++){JSONObject u=users.optJSONObject(i);if(u==null)continue;Button item=btn(u.optString("displayName","User")+"  @"+u.optString("username",""),false);results.addView(item,lp(dp(48),dp(4)));item.setOnClickListener(v->{JSONObject payload=new JSONObject();try{JSONArray ids=new JSONArray();ids.put(u.optString("id"));payload.put("userIds",ids);}catch(Exception ignored){}api("/groups/"+groupId+"/members","POST",payload,res->{if(!res.ok)message(res.error);else{message("Member invited.");showGroupMembers(groupId);}});});}});}public void afterTextChanged(android.text.Editable e){}});new AlertDialog.Builder(this).setTitle("Invite to group").setView(wrap).setNegativeButton("Close",null).show();}
     private void groupRow(JSONObject g){LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(12),dp(10),dp(12),dp(10));row.setBackground(rounded(card(),dp(18)));ImageView av=avatar(g.optString("avatarUrl",""),1);row.addView(av,new LinearLayout.LayoutParams(dp(52),dp(52)));LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(12),0,0,0);TextView title=tv(g.optString("name","Group"),15,text());title.setTypeface(null,1);info.addView(title);info.addView(tv("@"+g.optString("handle",""),12,muted()));JSONArray members=g.optJSONArray("members");info.addView(tv((members==null?0:members.length())+" members",11,GREEN));row.addView(info,new LinearLayout.LayoutParams(0,dp(66),1));body.addView(row,lp(dp(76),dp(6)));row.setOnClickListener(v->{String cid=g.optString("conversationId","");if(!cid.isEmpty()){activeGroupId=g.optString("id","");openChat(cid,g.optString("name","Group"),g.optString("avatarUrl",""),true);}else api("/groups/"+g.optString("id")+"/join","POST",new JSONObject(),r->{if(!r.ok){message(r.error);return;}activeGroupId=g.optString("id","");openChat(r.data.optString("conversationId"),g.optString("name","Group"),g.optString("avatarUrl",""),true);});});row.setOnLongClickListener(v->{showGroupMembers(g.optString("id",""));return true;});}
-    private void chatRow(JSONObject c,JSONObject o){LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);ImageView av=avatar(o.optString("avatarUrl",""),1);row.addView(av,new LinearLayout.LayoutParams(dp(54),dp(54)));LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(12),0,dp(4),0);LinearLayout titleRow=new LinearLayout(this);titleRow.setGravity(Gravity.CENTER_VERTICAL);TextView n=tv(o.optString("displayName","User"),16,text());n.setTypeface(null,1);titleRow.addView(n);if(o.optBoolean("verified")){TextView tick=tv("✓",14,Color.rgb(40,132,255));tick.setTypeface(null,1);tick.setPadding(dp(5),0,0,0);titleRow.addView(tick);}info.addView(titleRow);TextView u=tv("@"+o.optString("username",""),12,muted());JSONObject lm=c.optJSONObject("lastMessage");TextView last=tv(lm==null?"Start a conversation":lm.optString("body","").isEmpty()?"Photo":lm.optString("body"),12,muted());info.addView(u);info.addView(last);row.addView(info,new LinearLayout.LayoutParams(0,-1,1));cardRow(row);row.setOnClickListener(v->openChat(c.optString("id"),o.optString("displayName","User"),o.optString("avatarUrl","")));}
+    private void chatRow(JSONObject c, JSONObject o) {
+        boolean online = o.optBoolean("online", false);
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(12), dp(10), dp(12), dp(10));
+        row.setBackground(rounded(card(), dp(22)));
+
+        FrameLayout avatarWrap = new FrameLayout(this);
+        ImageView photo = avatar(o.optString("avatarUrl", ""), 1);
+        avatarWrap.addView(photo, new FrameLayout.LayoutParams(dp(58), dp(58), Gravity.CENTER));
+        if (online) {
+            View presence = new View(this);
+            GradientDrawable dot = new GradientDrawable();
+            dot.setShape(GradientDrawable.OVAL);
+            dot.setColor(Color.rgb(48, 209, 88));
+            dot.setStroke(dp(2), card());
+            presence.setBackground(dot);
+            FrameLayout.LayoutParams dotParams = new FrameLayout.LayoutParams(dp(13), dp(13), Gravity.BOTTOM | Gravity.RIGHT);
+            dotParams.setMargins(0, 0, dp(1), dp(1));
+            avatarWrap.addView(presence, dotParams);
+        }
+        row.addView(avatarWrap, new LinearLayout.LayoutParams(dp(62), dp(62)));
+
+        LinearLayout info = new LinearLayout(this);
+        info.setOrientation(LinearLayout.VERTICAL);
+        info.setPadding(dp(10), 0, dp(6), 0);
+        LinearLayout titleLine = new LinearLayout(this);
+        titleLine.setGravity(Gravity.CENTER_VERTICAL);
+        TextView name = tv(o.optString("displayName", "OLUNAA user"), 15, text());
+        name.setTypeface(null, 1);
+        titleLine.addView(name);
+        if (o.optBoolean("verified")) {
+            TextView verified = tv("✓", 13, Color.rgb(65, 151, 255));
+            verified.setTypeface(null, 1);
+            verified.setPadding(dp(5), 0, 0, 0);
+            titleLine.addView(verified);
+        }
+        info.addView(titleLine);
+        TextView handle = tv("@" + o.optString("username", ""), 10, muted());
+        handle.setPadding(0, dp(2), 0, 0);
+        info.addView(handle);
+
+        JSONObject last = c.optJSONObject("lastMessage");
+        String preview = "Start a conversation";
+        String time = "";
+        boolean unread = false;
+        boolean mine = false;
+        if (last != null) {
+            String bodyText = last.optString("body", "").trim();
+            preview = bodyText.isEmpty() ? "Shared a photo or video" : bodyText;
+            mine = meId.equals(last.optString("senderId", ""));
+            if (mine) preview = "You: " + preview;
+            String created = last.optString("createdAt", "");
+            if (created.length() >= 16) time = created.substring(11, 16);
+            unread = !mine && last.optString("seenAt", "").isEmpty();
+        }
+        LinearLayout bottom = new LinearLayout(this);
+        bottom.setGravity(Gravity.CENTER_VERTICAL);
+        TextView messagePreview = tv(preview, 11, muted());
+        messagePreview.setSingleLine(true);
+        messagePreview.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        bottom.addView(messagePreview, new LinearLayout.LayoutParams(0, dp(22), 1));
+        if (unread) {
+            TextView fresh = tv("NEW", 8, Color.WHITE);
+            fresh.setTypeface(null, 1);
+            fresh.setGravity(Gravity.CENTER);
+            fresh.setPadding(dp(6), dp(3), dp(6), dp(3));
+            fresh.setBackground(rounded(GREEN2, dp(8)));
+            LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(-2, dp(19));
+            badgeParams.setMargins(dp(5), 0, 0, 0);
+            bottom.addView(fresh, badgeParams);
+        } else if (mine && last != null && !last.optString("seenAt", "").isEmpty()) {
+            TextView receipt = tv("✓✓", 10, Color.rgb(66, 165, 255));
+            receipt.setPadding(dp(5), 0, 0, 0);
+            bottom.addView(receipt);
+        }
+        info.addView(bottom);
+        row.addView(info, new LinearLayout.LayoutParams(0, dp(64), 1));
+
+        LinearLayout meta = new LinearLayout(this);
+        meta.setOrientation(LinearLayout.VERTICAL);
+        meta.setGravity(Gravity.TOP | Gravity.RIGHT);
+        if (!time.isEmpty()) meta.addView(tv(time, 9, online ? GREEN : muted()));
+        if (online) {
+            TextView active = tv("ACTIVE", 7, GREEN);
+            active.setTypeface(null, 1);
+            active.setPadding(0, dp(5), 0, 0);
+            meta.addView(active);
+        }
+        row.addView(meta, new LinearLayout.LayoutParams(dp(42), dp(54)));
+        body.addView(row, lp(dp(88), dp(7)));
+        row.setOnClickListener(v -> openChat(c.optString("id"), o.optString("displayName", "User"), o.optString("avatarUrl", "")));
+    }
+
     private void showSearch(){rootBase();LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(0,dp(8),0,0);root.addView(box,new LinearLayout.LayoutParams(-1,-1));LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);TextView back=tv("‹",34,text());back.setGravity(Gravity.CENTER);bar.addView(back,new LinearLayout.LayoutParams(dp(48),dp(54)));EditText q=input("Search name, @username or email");bar.addView(q,new LinearLayout.LayoutParams(0,dp(54),1));box.addView(bar,lp(dp(62),dp(5)));back.setOnClickListener(v->showHome("Chats"));LinearLayout results=new LinearLayout(this);results.setOrientation(LinearLayout.VERTICAL);ScrollView sc=new ScrollView(this);sc.addView(results);box.addView(sc,new LinearLayout.LayoutParams(-1,0,1));q.setOnEditorActionListener((v,a,e)->{searchUsers(q.getText().toString(),results);return true;});q.requestFocus();((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).showSoftInput(q,InputMethodManager.SHOW_IMPLICIT);}
     private void searchUsers(String q,LinearLayout results){results.removeAllViews();if(q.trim().isEmpty())return;api("/search?q="+URLEncoder.encode(q.trim(),StandardCharsets.UTF_8),"GET",null,r->{if(!r.ok){message(r.error);return;}JSONArray users=r.data.optJSONArray("users");if(users==null||users.length()==0){TextView x=tv("No people found.",15,muted());x.setPadding(dp(16),dp(25),dp(16),0);results.addView(x);return;}for(int i=0;i<users.length();i++){JSONObject u=users.optJSONObject(i);if(u!=null)searchRow(results,u);}});}
     private void searchRow(LinearLayout results,JSONObject u){LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(12),dp(10),dp(12),dp(10));row.setBackground(rounded(card(),dp(20)));ImageView av=avatar(u.optString("avatarUrl",""),1);row.addView(av,new LinearLayout.LayoutParams(dp(52),dp(52)));LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(12),0,0,0);LinearLayout nameLine=new LinearLayout(this);nameLine.setGravity(Gravity.CENTER_VERTICAL);TextView n=tv(u.optString("displayName","User"),16,text());n.setTypeface(null,1);nameLine.addView(n);if(u.optBoolean("verified")){TextView tick=tv("✓",14,Color.rgb(40,132,255));tick.setTypeface(null,1);tick.setPadding(dp(5),0,0,0);nameLine.addView(tick);}info.addView(nameLine);info.addView(tv("@"+u.optString("username",""),12,muted()));info.addView(tv(u.optBoolean("online")?"Online":"Offline",11,u.optBoolean("online")?GREEN:muted()));row.addView(info,new LinearLayout.LayoutParams(0,dp(70),1));results.addView(row,lp(dp(72),dp(7)));row.setOnClickListener(v->createConversation(u));}
