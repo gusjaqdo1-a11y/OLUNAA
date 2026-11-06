@@ -25,16 +25,19 @@ public class MessageNotificationActionReceiver extends BroadcastReceiver {
         SharedPreferences prefs = context.getSharedPreferences("olunaa_session", Context.MODE_PRIVATE);
         String cookies = prefs.getString("cookies", "");
         if (cookies.isEmpty()) return;
+        final BroadcastReceiver.PendingResult pending = goAsync();
         if (ACTION_REPLY.equals(intent.getAction())) {
             android.os.Bundle results = RemoteInput.getResultsFromIntent(intent);
             CharSequence reply = results == null ? null : results.getCharSequence(KEY_TEXT_REPLY);
-            if (reply == null || reply.toString().trim().isEmpty()) return;
+            if (reply == null || reply.toString().trim().isEmpty()) { pending.finish(); return; }
             String text = reply.toString().trim();
-            if (text.length() > 12000) return;
-            new Thread(() -> postMessage(context, conversationId, text, cookies), "olunaa-notification-reply").start();
+            if (text.length() > 12000) { pending.finish(); return; }
+            new Thread(() -> { try { postMessage(context, conversationId, text, cookies); }
+                finally { pending.finish(); } }, "olunaa-notification-reply").start();
         } else if (ACTION_MARK_READ.equals(intent.getAction())) {
-            new Thread(() -> markConversationRead(context, conversationId, cookies), "olunaa-notification-read").start();
-        }
+            new Thread(() -> { try { markConversationRead(context, conversationId, cookies); }
+                finally { pending.finish(); } }, "olunaa-notification-read").start();
+        } else pending.finish();
     }
 
     private void postMessage(Context context, String conversationId, String text, String cookies) {
