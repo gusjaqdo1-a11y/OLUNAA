@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   });
   await db.channel.update({ where: { id: channel.id }, data: { updatedAt: new Date() } });
   const recipients = await db.user.findMany({ select: { id: true } });
-  const userIds = recipients.map(user => user.id).filter(id => id !== adminUser.id);
+  const userIds = recipients.map(user => user.id);
   const push = await sendPushToUsers(userIds, {
     title: channel.name,
     body: postBody || (mediaType.startsWith("video") ? "New video from an official channel" : "New media from an official channel"),
