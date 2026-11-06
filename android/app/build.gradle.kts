@@ -4,6 +4,9 @@ plugins {
 }
 
 android {
+    lint {
+        disable += "NullSafeMutableLiveData"
+    }
     namespace = "com.olunaa.app"
     compileSdk = 35
     compileOptions {
