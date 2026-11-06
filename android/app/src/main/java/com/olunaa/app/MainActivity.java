@@ -236,12 +236,31 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout chatRows=new LinearLayout(this);chatRows.setOrientation(LinearLayout.VERTICAL);target.addView(chatRows);
         String cached=prefs.getString(chatCacheKey(),"");
         if(!cached.isEmpty())try{renderChatRows(chatRows,new JSONArray(cached));}catch(Exception ignored){}
-        api("/conversations","GET",null,r->{if(generation!=homeGeneration||target!=body)return;if(!r.ok){if(chatRows.getChildCount()==0)message(r.error);return;}JSONArray rows=r.data.optJSONArray("conversations");if(rows!=null){prefs.edit().putString(chatCacheKey(),rows.toString()).apply();renderChatRows(chatRows,rows);}});
+        api("/conversations","GET",null,r->{if(generation!=homeGeneration||target!=body)return;if(!r.ok){if(chatRows.getChildCount()==0)message(r.error);return;}JSONArray rows=r.data.optJSONArray("conversations");if(rows!=null){prefs.edit().putString(chatCacheKey(),rows.toString()).apply();renderChatRows(chatRows,rows);prefetchRecentMessages(rows);}});
         TextView groupTitle=tv("YOUR GROUPS",11,GREEN);groupTitle.setTypeface(null,1);target.addView(groupTitle,lp(dp(30),dp(15)));
         LinearLayout groupRows=new LinearLayout(this);groupRows.setOrientation(LinearLayout.VERTICAL);target.addView(groupRows);
         String cachedGroups=prefs.getString(groupCacheKey(),"");
         if(!cachedGroups.isEmpty())try{renderGroupRows(groupRows,new JSONArray(cachedGroups));}catch(Exception ignored){}
         api("/groups","GET",null,r->{if(generation!=homeGeneration||target!=body)return;if(!r.ok)return;JSONArray rows=r.data.optJSONArray("groups");if(rows!=null){prefs.edit().putString(groupCacheKey(),rows.toString()).apply();renderGroupRows(groupRows,rows);}});
+    }
+    private void prefetchRecentMessages(JSONArray conversations){
+        int limit=Math.min(conversations.length(),12);
+        for(int i=0;i<limit;i++){
+            JSONObject item=conversations.optJSONObject(i);if(item==null)continue;
+            String conversationId=item.optString("id","");if(conversationId.isEmpty())continue;
+            String cacheKey=messageCacheKey(conversationId);
+            io.execute(()->{
+                HttpURLConnection connection=null;
+                try{
+                    String cookie=prefs.getString("cookies","");
+                    URL url=new URL(API+"/messages?conversationId="+URLEncoder.encode(conversationId,StandardCharsets.UTF_8));
+                    connection=(HttpURLConnection)url.openConnection();connection.setRequestMethod("GET");connection.setConnectTimeout(7000);connection.setReadTimeout(10000);connection.setRequestProperty("Accept","application/json");if(!cookie.isEmpty())connection.setRequestProperty("Cookie",cookie);
+                    int code=connection.getResponseCode();if(code<200||code>=300)return;
+                    String raw=read(connection.getInputStream());JSONObject payload=new JSONObject(raw);JSONArray messages=payload.optJSONArray("messages");if(messages==null)return;
+                    String snapshot=messages.toString();if(snapshot.length()<=180000)prefs.edit().putString(cacheKey,snapshot).apply();
+                }catch(Exception ignored){}finally{if(connection!=null)connection.disconnect();}
+            });
+        }
     }
     private void createGroupDialog(){
         LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(dp(8),dp(8),dp(8),0);
