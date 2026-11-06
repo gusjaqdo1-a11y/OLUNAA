@@ -8,6 +8,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
 
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -129,13 +132,59 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
                         | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
         Notification.Builder builder = Build.VERSION.SDK_INT >= 26
                 ? new Notification.Builder(this, CHANNEL) : new Notification.Builder(this);
-        builder.setSmallIcon(R.drawable.ic_olunaa)
+        builder.setSmallIcon(R.drawable.ic_stat_olunaa)
                 .setContentTitle(title)
                 .setContentText(body)
+                .setStyle(new Notification.BigTextStyle().bigText(body))
                 .setAutoCancel(true)
                 .setContentIntent(pending)
                 .setPriority(Notification.PRIORITY_HIGH)
                 .setCategory("incoming_call".equals(notificationType) ? Notification.CATEGORY_CALL : Notification.CATEGORY_MESSAGE);
+        Bitmap senderAvatar = loadSenderAvatar(data == null ? "" : data.getOrDefault("senderAvatarUrl", ""));
+        if (senderAvatar != null) builder.setLargeIcon(senderAvatar);
         manager.notify((int) (System.currentTimeMillis() & 0x7fffffff), builder.build());
+    }
+
+    /** Loads a small sender photo for the Android notification when the server can safely include it. */
+    private Bitmap loadSenderAvatar(String source) {
+        if (source == null || source.isEmpty()) return null;
+        try {
+            byte[] bytes;
+            if (source.startsWith("data:image/")) {
+                int comma = source.indexOf(',');
+                if (comma < 0 || source.length() > 3000) return null;
+                bytes = Base64.decode(source.substring(comma + 1), Base64.DEFAULT);
+            } else if (source.startsWith("https://") || source.startsWith("http://")) {
+                HttpURLConnection connection = (HttpURLConnection) new URL(source).openConnection();
+                connection.setConnectTimeout(2500);
+                connection.setReadTimeout(2500);
+                connection.setInstanceFollowRedirects(true);
+                try (java.io.InputStream in = connection.getInputStream();
+                     java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+                    byte[] buffer = new byte[4096];
+                    int count;
+                    while ((count = in.read(buffer)) != -1) {
+                        if (out.size() + count > 1024 * 1024) return null;
+                        out.write(buffer, 0, count);
+                    }
+                    bytes = out.toByteArray();
+                } finally {
+                    connection.disconnect();
+                }
+            } else {
+                return null;
+            }
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = Math.max(1, Math.max(bounds.outWidth, bounds.outHeight) / 192);
+            options.inPreferredConfig = Bitmap.Config.RGB_565;
+            return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
+        } catch (Exception error) {
+            android.util.Log.w("OLUNAA-FCM", "Could not load sender notification avatar", error);
+            return null;
+        }
     }
 }
