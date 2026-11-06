@@ -201,9 +201,19 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
             declineIntent.putExtra("conversationId", conversationId);
             PendingIntent decline = PendingIntent.getActivity(this, requestCode + 2, declineIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
-            builder.addAction(R.drawable.ic_stat_olunaa, "Answer", accept);
-            builder.addAction(R.drawable.ic_stat_olunaa, "Decline", decline);
-            if (Build.VERSION.SDK_INT >= 31) builder.setFullScreenIntent(pending, true);
+            if (Build.VERSION.SDK_INT >= 31) {
+                android.app.Person caller = new android.app.Person.Builder()
+                        .setName(title == null || title.isEmpty() ? "OLUNAA contact" : title)
+                        .build();
+                builder.setStyle(Notification.CallStyle.forIncomingCall(caller, decline, accept));
+                if (Build.VERSION.SDK_INT < 34 || manager.canUseFullScreenIntent()) {
+                    builder.setFullScreenIntent(pending, true);
+                }
+            } else {
+                builder.addAction(R.drawable.ic_stat_olunaa, "Answer", accept);
+                builder.addAction(R.drawable.ic_stat_olunaa, "Decline", decline);
+                builder.setFullScreenIntent(pending, true);
+            }
         }
         Bitmap senderAvatar = loadSenderAvatar(data == null ? "" : data.getOrDefault("senderAvatarUrl", ""));
         if (senderAvatar != null) builder.setLargeIcon(senderAvatar);
