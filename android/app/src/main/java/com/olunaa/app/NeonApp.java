@@ -80,8 +80,6 @@ public class NeonApp extends Application {
             background.setCornerRadius(24);
             background.setStroke(1, Color.rgb(73, 61, 160));
             button.setBackground(background);
-        } else if (view instanceof TextView) {
-            ((TextView) view).setTextColor(WHITE);
         }
     }
 }
