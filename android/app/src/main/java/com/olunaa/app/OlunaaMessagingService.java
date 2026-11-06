@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.RemoteInput;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -157,6 +158,32 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
                 .setContentIntent(pending)
                 .setPriority(incomingCall ? Notification.PRIORITY_MAX : Notification.PRIORITY_HIGH)
                 .setCategory(incomingCall ? Notification.CATEGORY_CALL : Notification.CATEGORY_MESSAGE);
+        if (!incomingCall && data != null && "message".equals(data.get("type"))) {
+            String conversationId = data.getOrDefault("conversationId", "");
+            if (!conversationId.isEmpty()) {
+                int actionId = conversationId.hashCode();
+                Intent replyIntent = new Intent(this, MessageNotificationActionReceiver.class);
+                replyIntent.setAction(MessageNotificationActionReceiver.ACTION_REPLY);
+                replyIntent.putExtra("conversationId", conversationId);
+                PendingIntent replyPending = PendingIntent.getBroadcast(this, actionId + 11, replyIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_MUTABLE : 0));
+                RemoteInput remoteInput = new RemoteInput.Builder(MessageNotificationActionReceiver.KEY_TEXT_REPLY)
+                        .setLabel("Write a message…").build();
+                Notification.Action replyAction = new Notification.Action.Builder(
+                        R.drawable.ic_stat_olunaa, "Reply", replyPending)
+                        .addRemoteInput(remoteInput).setAllowGeneratedReplies(true)
+                        .setSemanticAction(Notification.Action.SEMANTIC_ACTION_REPLY).build();
+                builder.addAction(replyAction);
+
+                Intent readIntent = new Intent(this, MessageNotificationActionReceiver.class);
+                readIntent.setAction(MessageNotificationActionReceiver.ACTION_MARK_READ);
+                readIntent.putExtra("conversationId", conversationId);
+                PendingIntent readPending = PendingIntent.getBroadcast(this, actionId + 12, readIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
+                builder.addAction(R.drawable.ic_stat_olunaa, "Mark as read", readPending);
+                builder.setGroup("olunaa-chat-" + conversationId);
+            }
+        }
         if (incomingCall) {
             Intent acceptIntent = new Intent(this, MainActivity.class);
             acceptIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -181,7 +208,7 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
         }
         Bitmap senderAvatar = loadSenderAvatar(data == null ? "" : data.getOrDefault("senderAvatarUrl", ""));
         if (senderAvatar != null) builder.setLargeIcon(senderAvatar);
-        manager.notify((int) (System.currentTimeMillis() & 0x7fffffff), builder.build());
+        int notificationId = data != null && !data.getOrDefault("conversationId", "").isEmpty() && !incomingCall\n                ? data.get("conversationId").hashCode() : (int) (System.currentTimeMillis() & 0x7fffffff);\n        manager.notify(notificationId, builder.build());
     }
 
     /** Loads a small sender photo for the Android notification when the server can safely include it. */
