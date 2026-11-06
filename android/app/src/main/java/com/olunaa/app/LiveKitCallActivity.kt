@@ -59,6 +59,14 @@ class LiveKitCallActivity : AppCompatActivity() {
             }
         }
     }
+    private val ringback = object : Runnable {
+        override fun run() {
+            if (!remoteConnected && roomConnected) {
+                try { tone?.startTone(ToneGenerator.TONE_SUP_RINGTONE, 2000) } catch (_: Exception) { }
+                handler.postDelayed(this, 3500)
+            }
+        }
+    }
 
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
         val audioGranted = grants[Manifest.permission.RECORD_AUDIO] == true
@@ -230,13 +238,14 @@ class LiveKitCallActivity : AppCompatActivity() {
     private fun startRingback() {
         stopRingback()
         try {
-            tone = ToneGenerator(AudioManager.STREAM_VOICE_CALL, 70).also {
-                it.startTone(ToneGenerator.TONE_SUP_RINGTONE)
-            }
+            tone = ToneGenerator(AudioManager.STREAM_VOICE_CALL, 70)
+            handler.removeCallbacks(ringback)
+            handler.post(ringback)
         } catch (_: Exception) { }
     }
 
     private fun stopRingback() {
+        handler.removeCallbacks(ringback)
         try { tone?.stopTone(); tone?.release() } catch (_: Exception) { }
         tone = null
     }
