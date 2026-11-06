@@ -79,7 +79,9 @@ public class NeonApp extends Application {
                     GradientDrawable.Orientation.TL_BR, new int[]{BLUE, AQUA, ICE});
             background.setCornerRadius(18);
             background.setStroke(1, Color.rgb(84, 178, 222));
-            button.setBackground(background);\n            button.setElevation(5f);\n            button.setLetterSpacing(0.01f);
+            button.setBackground(background);
+            button.setElevation(5f);
+            button.setLetterSpacing(0.01f);
         }
     }
 }
