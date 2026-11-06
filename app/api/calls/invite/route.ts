@@ -20,7 +20,11 @@ export async function POST(req: Request) {
     select: { userId: true },
   });
   if (!members.length) return NextResponse.json({ error: "No other members in this conversation." }, { status: 400 });
+  const active = await db.callSession.findFirst({ where: { calleeIds: { hasSome: members.map(x => x.userId) }, status: { in: ["invited", "accepted"] }, expiresAt: { gt: new Date() } } });
+  if (active) return NextResponse.json({ error: "One of the participants is already on another call.", status: "busy" }, { status: 409 });
+  const call = await db.callSession.create({ data: { conversationId, callerId: me.id, calleeIds: members.map(x => x.userId), mode, status: "invited", expiresAt: new Date(Date.now() + 60000) } });
   const invite = {
+    callId: call.id,
     conversationId,
     callerId: me.id,
     callerName: me.displayName,
@@ -38,5 +42,5 @@ export async function POST(req: Request) {
   await sendPushToUsers(members.map(x => x.userId), { title: me.displayName, body: mode === "video" ? "Incoming video call" : "Incoming voice call", data: { type: "incoming_call", conversationId, mode, callerName: me.displayName } });
   const failed = results.filter(x => x.status === "rejected").length;
   if (failed === results.length) return NextResponse.json({ error: "Could not notify the other participants." }, { status: 502 });
-  return NextResponse.json({ ok: true, notified: results.length - failed, realtimeConfigured: !!process.env.ABLY_API_KEY });
+  return NextResponse.json({ ok: true, callId: call.id, status: call.status, expiresAt: call.expiresAt, notified: results.length - failed, realtimeConfigured: !!process.env.ABLY_API_KEY });
 }
