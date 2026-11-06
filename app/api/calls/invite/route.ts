@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     select: { userId: true },
   });
   if (!members.length) return NextResponse.json({ error: "No other members in this conversation." }, { status: 400 });
-  const active = await db.callSession.findFirst({ where: { calleeIds: { hasSome: members.map(x => x.userId) }, status: { in: ["invited", "accepted"] }, expiresAt: { gt: new Date() } } });
+  const active = await db.callSession.findFirst({ where: { OR: [{ callerId: me.id }, { calleeIds: { hasSome: members.map(x => x.userId) } }], status: { in: ["invited", "accepted"] }, expiresAt: { gt: new Date() } } });
   if (active) return NextResponse.json({ error: "One of the participants is already on another call.", status: "busy" }, { status: 409 });
   const call = await db.callSession.create({ data: { conversationId, callerId: me.id, calleeIds: members.map(x => x.userId), mode, status: "invited", expiresAt: new Date(Date.now() + 60000) } });
   const invite = {
