@@ -100,11 +100,14 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
     @Override
     public void onMessageReceived(RemoteMessage message) {
         super.onMessageReceived(message);
-        String title = message.getNotification() != null && message.getNotification().getTitle() != null
-                ? message.getNotification().getTitle() : "OLUNAA";
-        String body = message.getNotification() != null && message.getNotification().getBody() != null
-                ? message.getNotification().getBody() : "You have a new notification";
-        showNotification(title, body, message.getData());
+        Map<String, String> data = message.getData();
+        String title = data.getOrDefault("title",
+                message.getNotification() != null && message.getNotification().getTitle() != null
+                        ? message.getNotification().getTitle() : "OLUNAA");
+        String body = data.getOrDefault("body",
+                message.getNotification() != null && message.getNotification().getBody() != null
+                        ? message.getNotification().getBody() : "You have a new notification");
+        showNotification(title, body, data);
     }
 
     private void showNotification(String title, String body, Map<String, String> data) {
