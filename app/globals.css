@@ -39,3 +39,14 @@ button:focus-visible,input:focus-visible{outline:2px solid #62c6ff;outline-offse
 .conversation-head,.composer-wrap{border-color:rgba(156,203,255,.12)}
 .chat-copy p,.contact span,.suggestion span{color:#91a8c2}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+
+/* Real poll cards and compact poll composer */
+.pollModal{border-color:rgba(82,180,255,.28)}
+.pollCard{width:min(100%,360px);min-width:220px;display:grid;gap:10px;padding:13px;border:1px solid rgba(130,195,255,.2);border-radius:17px;background:linear-gradient(145deg,rgba(21,49,80,.96),rgba(8,20,37,.97));box-shadow:0 14px 35px rgba(0,0,0,.2)}
+.pollLabel{display:flex;align-items:center;gap:6px;color:#69c5ff;font-size:9px;font-weight:800;letter-spacing:.12em}
+.pollQuestion{font-size:14px;line-height:1.4;color:#f5f9ff}
+.pollOption{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px 12px;border:1px solid rgba(157,203,255,.2);border-radius:11px;background:rgba(139,190,245,.07);color:#f1f7ff;text-align:left;font-size:12px}
+.pollOption:hover,.pollOption.chosen{border-color:#55baff;background:rgba(57,148,255,.2)}
+.pollOption b{color:#7ed4ff;font-variant-numeric:tabular-nums}
+.pollCard>small{color:#9bb3cd;font-size:9px}
