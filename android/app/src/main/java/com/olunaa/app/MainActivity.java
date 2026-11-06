@@ -524,11 +524,116 @@ public class MainActivity extends AppCompatActivity {
     }
     private ScrollView findScroll(View v){View p=v;while(p.getParent() instanceof View){p=(View)p.getParent();if(p instanceof ScrollView)return (ScrollView)p;}return null;}
     private void bubble(LinearLayout list,JSONObject m){
-        boolean mine=meId.equals(m.optString("senderId"));LinearLayout wrap=new LinearLayout(this);wrap.setOrientation(LinearLayout.VERTICAL);wrap.setGravity(mine?Gravity.RIGHT:Gravity.LEFT);
-        String media=safeString(m,"mediaUrl","");String mediaType=safeString(m,"mediaType","");if(!media.isEmpty()){if(mediaType.startsWith("video")||media.startsWith("data:video/")){wrap.addView(videoPreview(media),new LinearLayout.LayoutParams(dp(250),dp(210)));}else if(media.startsWith("data:image/")||media.startsWith("https://")||media.startsWith("http://")){ImageView photo=new ImageView(this);photo.setScaleType(ImageView.ScaleType.CENTER_CROP);photo.setBackground(rounded(card(),dp(18)));loadImage(photo,media);wrap.addView(photo,new LinearLayout.LayoutParams(dp(250),dp(210)));}else{TextView attachment=tv("📎  Attachment",14,GREEN);attachment.setPadding(dp(14),dp(12),dp(14),dp(12));attachment.setBackground(rounded(card(),dp(16)));wrap.addView(attachment);}}
-        if(m.optBoolean("forwarded",false)){TextView fw=tv("↗ Forwarded",10,muted());fw.setPadding(dp(8),dp(3),dp(8),dp(3));wrap.addView(fw);}if(!safeString(m,"replyToId","").isEmpty()){LinearLayout quote=new LinearLayout(this);quote.setOrientation(LinearLayout.VERTICAL);quote.setPadding(dp(9),dp(6),dp(9),dp(6));quote.setBackground(rounded(dark?Color.rgb(28,49,43):Color.rgb(220,235,226),dp(10)));quote.addView(tv(safeString(m,"replyToSender","User"),10,GREEN));quote.addView(tv(safeString(m,"replyToBody","Message"),11,muted()));wrap.addView(quote,lp(-2,dp(4)));}String bodyText=safeString(m,"body","");if(!bodyText.isEmpty()){TextView b=tv(bodyText,15,mine?Color.WHITE:text());b.setPadding(dp(16),dp(12),dp(16),dp(12));b.setMaxWidth(dp(310));b.setBackground(mine?gradient(Color.rgb(119,76,232),Color.rgb(31,166,208),dp(21)):glass(21));b.setElevation(dp(3));wrap.addView(b,lp(-2,dp(3)));}
-        JSONArray reactions=m.optJSONArray("reactions");if(reactions!=null&&reactions.length()>0){LinkedHashMap<String,Integer> counts=new LinkedHashMap<>();for(int i=0;i<reactions.length();i++){JSONObject rx=reactions.optJSONObject(i);if(rx!=null){String emoji=rx.optString("emoji","");counts.put(emoji,counts.getOrDefault(emoji,0)+1);}}StringBuilder rb=new StringBuilder();for(Map.Entry<String,Integer> e:counts.entrySet())rb.append(e.getKey()).append(" ").append(e.getValue()).append("  ");TextView reactionText=tv(rb.toString(),11,GREEN);reactionText.setPadding(dp(8),dp(4),dp(8),dp(4));wrap.addView(reactionText);}wrap.setOnLongClickListener(v->{showMessageActions(m,list);return true;});
-        String stamp=m.optString("createdAt","");String receipt=mine?(m.optString("seenAt","").isEmpty()?(m.optString("deliveredAt","").isEmpty()?"":"  ✓"):"  ✓✓"):"";TextView meta=tv((stamp.length()>=16?stamp.substring(11,16):"")+receipt,10,mine&&!m.optString("seenAt","").isEmpty()?Color.rgb(61,177,255):muted());meta.setPadding(dp(7),dp(2),dp(7),0);wrap.addView(meta);list.addView(wrap,lp(-2,dp(10)));
+        boolean mine=meId.equals(m.optString("senderId"));
+        LinearLayout row=new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(mine?Gravity.RIGHT:Gravity.LEFT);
+        row.setPadding(dp(3),dp(2),dp(3),dp(2));
+
+        LinearLayout cardMessage=new LinearLayout(this);
+        cardMessage.setOrientation(LinearLayout.VERTICAL);
+        cardMessage.setPadding(dp(13),dp(9),dp(12),dp(7));
+        cardMessage.setBackground(mine
+            ? gradient(Color.rgb(139,92,246),Color.rgb(34,145,198),dp(20))
+            : glass(20));
+        cardMessage.setElevation(dp(2));
+        cardMessage.setMaxWidth(dp(316));
+
+        String senderName=safeString(m,"senderName","");
+        if(!mine&&!senderName.isEmpty()&&m.optBoolean("groupMessage",false)){
+            TextView author=tv(senderName,11,GREEN);
+            author.setTypeface(null,1);
+            cardMessage.addView(author,lp(-2,dp(17)));
+        }
+
+        if(m.optBoolean("forwarded",false)){
+            TextView fw=tv("↗  Forwarded",10,mine?Color.argb(210,255,255,255):muted());
+            fw.setPadding(0,0,0,dp(5));
+            cardMessage.addView(fw);
+        }
+        if(!safeString(m,"replyToId","").isEmpty()){
+            LinearLayout quote=new LinearLayout(this);
+            quote.setOrientation(LinearLayout.VERTICAL);
+            quote.setPadding(dp(9),dp(6),dp(9),dp(6));
+            quote.setBackground(rounded(mine?Color.argb(58,255,255,255):(dark?Color.rgb(31,27,68):Color.rgb(226,224,248)),dp(10)));
+            TextView quoteSender=tv(safeString(m,"replyToSender","Reply"),10,mine?Color.WHITE:GREEN);
+            quoteSender.setTypeface(null,1);
+            quote.addView(quoteSender);
+            quote.addView(tv(safeString(m,"replyToBody","Message"),11,mine?Color.argb(220,255,255,255):muted()));
+            LinearLayout.LayoutParams qp=new LinearLayout.LayoutParams(-1,-2);
+            qp.bottomMargin=dp(6);
+            cardMessage.addView(quote,qp);
+        }
+
+        String media=safeString(m,"mediaUrl","");
+        String mediaType=safeString(m,"mediaType","");
+        if(!media.isEmpty()){
+            if(mediaType.startsWith("video")||media.startsWith("data:video/")){
+                VideoView video=videoPreview(media);
+                LinearLayout.LayoutParams vp=new LinearLayout.LayoutParams(dp(248),dp(190));
+                vp.bottomMargin=dp(5);
+                cardMessage.addView(video,vp);
+            }else if(mediaType.startsWith("image")||media.startsWith("data:image/")||media.startsWith("https://")||media.startsWith("http://")){
+                ImageView photo=new ImageView(this);
+                photo.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                photo.setBackground(rounded(field(),dp(14)));
+                photo.setClipToOutline(true);
+                LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(dp(248),dp(190));
+                pp.bottomMargin=dp(5);
+                cardMessage.addView(photo,pp);
+                loadImage(photo,media);
+            }else{
+                TextView attachment=tv("▤  Attachment",14,mine?Color.WHITE:GREEN);
+                attachment.setPadding(dp(12),dp(10),dp(12),dp(10));
+                attachment.setBackground(rounded(mine?Color.argb(42,255,255,255):field(),dp(13)));
+                cardMessage.addView(attachment);
+            }
+        }
+
+        String bodyText=safeString(m,"body","");
+        if(!bodyText.isEmpty()){
+            TextView bodyTextView=tv(bodyText,15,mine?Color.WHITE:text());
+            bodyTextView.setLineSpacing(dp(2),1f);
+            bodyTextView.setMaxWidth(dp(288));
+            cardMessage.addView(bodyTextView);
+        }
+
+        JSONArray reactions=m.optJSONArray("reactions");
+        if(reactions!=null&&reactions.length()>0){
+            LinkedHashMap<String,Integer> counts=new LinkedHashMap<>();
+            for(int i=0;i<reactions.length();i++){
+                JSONObject rx=reactions.optJSONObject(i);
+                if(rx!=null){String emoji=rx.optString("emoji","");counts.put(emoji,counts.getOrDefault(emoji,0)+1);}
+            }
+            StringBuilder rb=new StringBuilder();
+            for(Map.Entry<String,Integer> entry:counts.entrySet())rb.append(entry.getKey()).append(" ").append(entry.getValue()).append("  ");
+            TextView reactionText=tv(rb.toString(),11,mine?Color.WHITE:GREEN);
+            reactionText.setPadding(dp(7),dp(5),dp(7),0);
+            cardMessage.addView(reactionText);
+        }
+
+        LinearLayout metadata=new LinearLayout(this);
+        metadata.setOrientation(LinearLayout.HORIZONTAL);
+        metadata.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);
+        metadata.setPadding(dp(8),dp(4),0,0);
+        String stamp=m.optString("createdAt","");
+        String time=stamp.length()>=16?stamp.substring(11,16):"";
+        TextView clock=tv(time,10,mine?Color.argb(210,255,255,255):muted());
+        metadata.addView(clock);
+        if(mine){
+            String receipt=m.optString("seenAt","").isEmpty()
+                ?(m.optString("deliveredAt","").isEmpty()?"✓":"✓✓")
+                :"✓✓";
+            TextView ticks=tv(receipt,13,!m.optString("seenAt","").isEmpty()?Color.rgb(104,213,255):(mine?Color.argb(225,255,255,255):muted()));
+            ticks.setTypeface(null,1);
+            LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(-2,-2);
+            tp.leftMargin=dp(4);
+            metadata.addView(ticks,tp);
+        }
+        cardMessage.addView(metadata,new LinearLayout.LayoutParams(-1,-2));
+        row.addView(cardMessage,new LinearLayout.LayoutParams(-2,-2));
+        row.setOnLongClickListener(v->{showMessageActions(m,list);return true;});
+        list.addView(row,lp(-2,dp(7)));
     }
     private void sendMessage(EditText box,LinearLayout list){String s=box.getText().toString().trim();if(s.isEmpty()||activeConversation.isEmpty())return;String conversationId=activeConversation,replyId=pendingReplyId,replyBody=pendingReplyBody,replySender=pendingReplySender;JSONObject payload=new JSONObject(),optimistic=new JSONObject();try{payload.put("conversationId",conversationId);payload.put("body",s);if(!replyId.isEmpty())payload.put("replyToId",replyId);optimistic.put("id","local-"+UUID.randomUUID());optimistic.put("senderId",meId);optimistic.put("body",s);optimistic.put("createdAt",new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss",java.util.Locale.US).format(new java.util.Date()));optimistic.put("deliveredAt","");optimistic.put("seenAt","");if(!replyId.isEmpty()){optimistic.put("replyToId",replyId);optimistic.put("replyToBody",replyBody);optimistic.put("replyToSender",replySender);}}catch(Exception ignored){}box.setText("");setTyping(false);clearReply();bubble(list,optimistic);ScrollView scroll=findScroll(list);if(scroll!=null)scroll.post(()->scroll.fullScroll(View.FOCUS_DOWN));api("/messages","POST",payload,r->{if(!conversationId.equals(activeConversation))return;if(!r.ok){message(r.error);loadMessages(list);}else loadMessages(list);});}
     private void clearReply(){pendingReplyId=pendingReplyBody=pendingReplySender="";if(chatReplyHint!=null)chatReplyHint.setVisibility(View.GONE);}
