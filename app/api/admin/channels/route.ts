@@ -64,9 +64,9 @@ export async function POST(req: Request) {
   const recipients = await db.user.findMany({ select: { id: true } });
   const userIds = recipients.map(user => user.id).filter(id => id !== adminUser.id);
   const push = await sendPushToUsers(userIds, {
-    title: name,
+    title: channel.name,
     body: postBody || (mediaType.startsWith("video") ? "New video from an official channel" : "New media from an official channel"),
-    data: { type: "channel_post", channelId: channel.id, channelNumber: number, senderAvatarUrl: avatarUrl || adminUser.avatarUrl || "" },
+    data: { type: "channel_post", channelId: channel.id, channelNumber: channel.channelNumber || "", senderAvatarUrl: (() => { const a = channel.avatarUrl || adminUser.avatarUrl || ""; return a.startsWith("https://") || a.startsWith("http://") || (a.startsWith("data:image/") && a.length <= 2600) ? a : ""; })() },
   });
   return NextResponse.json({ channel, message, broadcast: { recipients: userIds.length, pushSent: push.sent, pushConfigured: push.configured } }, { status: 201 });
 }
