@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     });
     return NextResponse.json({ channels });
   }
-  const channel = await db.channel.findFirst({ where: number ? { channelNumber: number } : { handle }, include: { messages: { orderBy: { createdAt: "desc" }, take: 100, include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true, verified: true } } } } } });
+  const channel = await db.channel.findFirst({ where: number ? { channelNumber: number } : { handle: handle || "" }, include: { messages: { orderBy: { createdAt: "desc" }, take: 100, include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true, verified: true } } } } } });
   if (!channel) return NextResponse.json({ error: "Channel not found" }, { status: 404 });
   if (channel.privacy === "private") {
     if (!me) return NextResponse.json({ error: "Sign in to view this private channel." }, { status: 401 });
