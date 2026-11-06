@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as Ably from "ably";
-import { Camera, Check, CheckCheck, BadgeCheck, ChevronLeft, CircleUserRound, Image as ImageIcon, Menu, MessageCircle, MoreVertical, Paperclip, Phone, Plus, Search, Send, Settings, Users, Video, X } from "lucide-react";
+import { Camera, Check, CheckCheck, BadgeCheck, Radio, ChevronLeft, CircleUserRound, Image as ImageIcon, Menu, MessageCircle, MoreVertical, Paperclip, Phone, Plus, Search, Send, Settings, Users, Video, X } from "lucide-react";
 
 type Tab="chats"|"updates"|"communities"|"calls"|"settings";
 type User={id:string;email:string;username:string;displayName:string;bio?:string|null;avatarUrl?:string|null;verified?:boolean;settings?:any};
