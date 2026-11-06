@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   const settings = await db.userSettings.findUnique({ where: { userId: me.id } });
   await db.user.update({ where: { id: me.id }, data: { lastActiveAt: new Date() } });
   if (settings?.readReceipts !== false) await db.message.updateMany({ where: { conversationId: id, senderId: { not: me.id }, seenAt: null }, data: { seenAt: new Date(), deliveredAt: new Date() } });
-  const messages = await db.message.findMany({ where: { conversationId: id }, orderBy: { createdAt: "asc" }, take: 500, include: { reactions: { select: { emoji: true, userId: true } }, sender: { select: { id: true, displayName: true, username: true, avatarUrl: true } } } });
+  const messages = await db.message.findMany({ where: { conversationId: id }, orderBy: { createdAt: "asc" }, take: 500, include: { reactions: { select: { emoji: true, userId: true } }, poll: { include: { options: true, votes: { select: { userId: true, optionId: true } } } }, sender: { select: { id: true, displayName: true, username: true, avatarUrl: true } } } });
   return NextResponse.json({ messages });
 }
 export async function POST(req: Request) {
