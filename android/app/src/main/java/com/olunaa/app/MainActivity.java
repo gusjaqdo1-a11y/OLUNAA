@@ -445,7 +445,16 @@ public class MainActivity extends AppCompatActivity {
         messagePreview.setTypeface(null, unread ? 1 : 0);
         previewLine.addView(messagePreview, new LinearLayout.LayoutParams(0, dp(24), 1));
         if (mine && last != null) {
-            TextView receipt = tv(seen ? "✓✓" : "✓", 12, seen ? Color.rgb(69, 170, 255) : muted());
+            boolean delivered = !safeString(last, "deliveredAt", "").isEmpty();
+            String receiptMark = seen || delivered ? "✓✓" : "✓";
+            int receiptColor = seen
+                ? Color.rgb(104, 213, 255)
+                : delivered
+                    ? (dark ? Color.argb(225, 226, 232, 245) : Color.rgb(111, 128, 153))
+                    : muted();
+            TextView receipt = tv(receiptMark, 12, receiptColor);
+            receipt.setTypeface(null, 1);
+            receipt.setContentDescription(seen ? "Read" : delivered ? "Delivered" : "Sent");
             receipt.setPadding(0, 0, dp(5), 0);
             previewLine.addView(receipt);
         }
