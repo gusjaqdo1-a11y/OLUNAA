@@ -5,15 +5,17 @@ export const runtime = "nodejs";
 
 export async function GET(req: Request) {
   const me = await getCurrentUser();
-  const handle = new URL(req.url).searchParams.get("handle");
-  if (!handle) {
+  const params = new URL(req.url).searchParams;
+  const handle = params.get("handle");
+  const number = params.get("number");
+  if (!handle && !number) {
     const channels = await db.channel.findMany({
       where: me ? { OR: [{ privacy: "public" }, { members: { some: { userId: me.id } } }] } : { privacy: "public" },
       orderBy: { updatedAt: "desc" }, take: 100,
     });
     return NextResponse.json({ channels });
   }
-  const channel = await db.channel.findUnique({ where: { handle }, include: { messages: { orderBy: { createdAt: "desc" }, take: 100, include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true, verified: true } } } } } });
+  const channel = await db.channel.findFirst({ where: number ? { channelNumber: number } : { handle }, include: { messages: { orderBy: { createdAt: "desc" }, take: 100, include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true, verified: true } } } } } });
   if (!channel) return NextResponse.json({ error: "Channel not found" }, { status: 404 });
   if (channel.privacy === "private") {
     if (!me) return NextResponse.json({ error: "Sign in to view this private channel." }, { status: 401 });
