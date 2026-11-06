@@ -528,7 +528,7 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setGravity(Gravity.CENTER_VERTICAL);info.setPadding(dp(12),0,dp(4),0);
         LinearLayout nameLine=new LinearLayout(this);nameLine.setGravity(Gravity.CENTER_VERTICAL);
         TextView n=tv(c.optString("name","Community"),16,text());n.setTypeface(null,1);n.setSingleLine(true);n.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        nameLine.addView(n,new LinearLayout.LayoutParams(0,dp(25),c.optBoolean("verified")?0:1));
+        nameLine.addView(n,new LinearLayout.LayoutParams(c.optBoolean("verified")?-2:0,dp(25),c.optBoolean("verified")?0:1));
         if(c.optBoolean("verified")){ImageView tick=new ImageView(this);tick.setImageResource(R.drawable.ic_verified_blue);tick.setScaleType(ImageView.ScaleType.CENTER_INSIDE);LinearLayout.LayoutParams tickLp=new LinearLayout.LayoutParams(dp(18),dp(18));tickLp.leftMargin=dp(5);nameLine.addView(tick,tickLp);}
         info.addView(nameLine,new LinearLayout.LayoutParams(-1,dp(27)));
         String publicId=c.optString("channelNumber","");info.addView(tv(publicId.isEmpty()?"@"+c.optString("handle",""):publicId,12,muted()));
