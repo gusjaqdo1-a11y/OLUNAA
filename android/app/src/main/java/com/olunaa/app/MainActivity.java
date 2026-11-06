@@ -537,7 +537,6 @@ public class MainActivity extends AppCompatActivity {
             ? gradient(Color.rgb(139,92,246),Color.rgb(34,145,198),dp(20))
             : glass(20));
         cardMessage.setElevation(dp(2));
-        cardMessage.setMaxWidth(dp(316));
 
         String senderName=safeString(m,"senderName","");
         if(!mine&&!senderName.isEmpty()&&m.optBoolean("groupMessage",false)){
@@ -630,7 +629,9 @@ public class MainActivity extends AppCompatActivity {
             tp.leftMargin=dp(4);
             metadata.addView(ticks,tp);
         }
-        cardMessage.addView(metadata,new LinearLayout.LayoutParams(-1,-2));
+        LinearLayout.LayoutParams metadataParams=new LinearLayout.LayoutParams(-2,-2);
+        metadataParams.gravity=Gravity.RIGHT;
+        cardMessage.addView(metadata,metadataParams);
         row.addView(cardMessage,new LinearLayout.LayoutParams(-2,-2));
         row.setOnLongClickListener(v->{showMessageActions(m,list);return true;});
         list.addView(row,lp(-2,dp(7)));
