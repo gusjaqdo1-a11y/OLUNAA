@@ -719,16 +719,12 @@ public class MainActivity extends AppCompatActivity {
         FrameLayout.LayoutParams shadeTopLp=new FrameLayout.LayoutParams(-1,dp(150),Gravity.TOP);
         viewer.addView(shadeTop,shadeTopLp);
 
-        LinearLayout header=new LinearLayout(this);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(14),dp(12),dp(14),dp(8));
         ProgressBar progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
         progress.setMax(100);progress.setProgress(100);
         progress.setProgressTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));
         progress.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.argb(90,255,255,255)));
         LinearLayout.LayoutParams progressLp=new LinearLayout.LayoutParams(-1,dp(3));
-        progressLp.bottomMargin=dp(12);
-        header.addView(progress,progressLp);
+        progressLp.setMargins(dp(14),dp(12),dp(14),dp(12));
 
         LinearLayout identity=new LinearLayout(this);
         identity.setGravity(Gravity.CENTER_VERTICAL);
@@ -751,7 +747,7 @@ public class MainActivity extends AppCompatActivity {
         close.setOnClickListener(v->showHome("Updates"));
         LinearLayout headerColumn=new LinearLayout(this);
         headerColumn.setOrientation(LinearLayout.VERTICAL);
-        headerColumn.addView(header,new LinearLayout.LayoutParams(-1,dp(3)));
+        headerColumn.addView(progress,progressLp);
         headerColumn.addView(identity,new LinearLayout.LayoutParams(-1,dp(54)));
         FrameLayout.LayoutParams headerLp=new FrameLayout.LayoutParams(-1,-2,Gravity.TOP);
         viewer.addView(headerColumn,headerLp);
