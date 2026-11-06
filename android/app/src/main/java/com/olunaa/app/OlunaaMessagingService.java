@@ -208,7 +208,9 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
         }
         Bitmap senderAvatar = loadSenderAvatar(data == null ? "" : data.getOrDefault("senderAvatarUrl", ""));
         if (senderAvatar != null) builder.setLargeIcon(senderAvatar);
-        int notificationId = data != null && !data.getOrDefault("conversationId", "").isEmpty() && !incomingCall\n                ? data.get("conversationId").hashCode() : (int) (System.currentTimeMillis() & 0x7fffffff);\n        manager.notify(notificationId, builder.build());
+        int notificationId = data != null && !data.getOrDefault("conversationId", "").isEmpty() && !incomingCall
+                ? data.get("conversationId").hashCode() : (int) (System.currentTimeMillis() & 0x7fffffff);
+        manager.notify(notificationId, builder.build());
     }
 
     /** Loads a small sender photo for the Android notification when the server can safely include it. */
