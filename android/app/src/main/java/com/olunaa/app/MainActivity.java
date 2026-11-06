@@ -87,9 +87,16 @@ public class MainActivity extends AppCompatActivity {
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
     }
 
-    private void cacheImage(String url, Bitmap bitmap) {
+    private String imageCacheKey(String url) {
+        if (url != null && url.startsWith("data:image")) {
+            return "data:image:" + url.length() + ":" + Integer.toHexString(url.hashCode());
+        }
+        return url == null ? "" : url;
+    }
+
+    private void cacheImage(String key, Bitmap bitmap) {
         if (bitmap == null) return;
-        imageCache.put(url, bitmap);
+        imageCache.put(key, bitmap);
         if (imageCache.size() > 100) {
             Iterator<String> keys = imageCache.keySet().iterator();
             if (keys.hasNext()) imageCache.remove(keys.next());
@@ -97,14 +104,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadImage(ImageView im, String url) {
-        Bitmap cached = imageCache.get(url);
+        if (url == null || url.isEmpty()) return;
+        String cacheKey = imageCacheKey(url);
+        Bitmap cached = imageCache.get(cacheKey);
         if (cached != null) { im.setImageBitmap(cached); return; }
         if (url.startsWith("data:image")) {
-            try {
-                byte[] raw = android.util.Base64.decode(url.substring(url.indexOf(',') + 1), android.util.Base64.DEFAULT);
-                Bitmap bitmap = decodeScaledImage(raw, 720);
-                if (bitmap != null) { cacheImage(url, bitmap); im.setImageBitmap(bitmap); }
-            } catch (Exception ignored) { }
+            io.execute(() -> {
+                try {
+                    byte[] raw = android.util.Base64.decode(url.substring(url.indexOf(',') + 1), android.util.Base64.DEFAULT);
+                    Bitmap bitmap = decodeScaledImage(raw, 720);
+                    if (bitmap != null) {
+                        cacheImage(cacheKey, bitmap);
+                        main.post(() -> im.setImageBitmap(bitmap));
+                    }
+                } catch (Exception ignored) { }
+            });
             return;
         }
         io.execute(() -> {
@@ -127,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                     Bitmap bitmap = decodeScaledImage(output.toByteArray(), 720);
                     if (bitmap != null) {
-                        cacheImage(url, bitmap);
+                        cacheImage(cacheKey, bitmap);
                         main.post(() -> im.setImageBitmap(bitmap));
                     }
                 }
