@@ -4,10 +4,14 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.RemoteInput;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
 
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -24,6 +28,7 @@ import java.util.Map;
 
 public class OlunaaMessagingService extends FirebaseMessagingService {
     private static final String CHANNEL = "olunaa_messages";
+    private static final String CALL_CHANNEL = "olunaa_incoming_calls";
     private static final String TOKEN_URL = "https://olunaa.vercel.app/api/devices/token";
     private static final long TOKEN_SYNC_INTERVAL_MS = 6L * 60L * 60L * 1000L;
 
@@ -97,22 +102,38 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
     @Override
     public void onMessageReceived(RemoteMessage message) {
         super.onMessageReceived(message);
-        String title = message.getNotification() != null && message.getNotification().getTitle() != null
-                ? message.getNotification().getTitle() : "OLUNAA";
-        String body = message.getNotification() != null && message.getNotification().getBody() != null
-                ? message.getNotification().getBody() : "You have a new notification";
-        showNotification(title, body, message.getData());
+        Map<String, String> data = message.getData();
+        String title = data.getOrDefault("title",
+                message.getNotification() != null && message.getNotification().getTitle() != null
+                        ? message.getNotification().getTitle() : "OLUNAA");
+        String body = data.getOrDefault("body",
+                message.getNotification() != null && message.getNotification().getBody() != null
+                        ? message.getNotification().getBody() : "You have a new notification");
+        showNotification(title, body, data);
     }
 
     private void showNotification(String title, String body, Map<String, String> data) {
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager == null) return;
+        boolean incomingCall = data != null && "incoming_call".equals(data.get("type"));
+        String selectedChannel = incomingCall ? CALL_CHANNEL : CHANNEL;
         if (Build.VERSION.SDK_INT >= 26) {
-            NotificationChannel channel = new NotificationChannel(
+            NotificationChannel messages = new NotificationChannel(
                     CHANNEL, "OLUNAA messages", NotificationManager.IMPORTANCE_HIGH);
-            channel.setDescription("New messages and incoming calls");
-            channel.enableVibration(true);
-            manager.createNotificationChannel(channel);
+            messages.setDescription("New messages and account activity");
+            messages.enableVibration(true);
+            manager.createNotificationChannel(messages);
+            NotificationChannel calls = new NotificationChannel(
+                    CALL_CHANNEL, "OLUNAA incoming calls", NotificationManager.IMPORTANCE_HIGH);
+            calls.setDescription("Ringing alerts for incoming OLUNAA voice and video calls");
+            calls.enableVibration(true);
+            calls.setVibrationPattern(new long[]{0, 500, 250, 500, 250, 800});
+            android.net.Uri ring = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE);
+            android.media.AudioAttributes audio = new android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+            calls.setSound(ring, audio);
+            manager.createNotificationChannel(calls);
         }
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -128,14 +149,122 @@ public class OlunaaMessagingService extends FirebaseMessagingService {
                 PendingIntent.FLAG_UPDATE_CURRENT
                         | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
         Notification.Builder builder = Build.VERSION.SDK_INT >= 26
-                ? new Notification.Builder(this, CHANNEL) : new Notification.Builder(this);
-        builder.setSmallIcon(R.drawable.ic_olunaa)
+                ? new Notification.Builder(this, selectedChannel) : new Notification.Builder(this);
+        builder.setSmallIcon(R.drawable.ic_stat_olunaa)
                 .setContentTitle(title)
                 .setContentText(body)
-                .setAutoCancel(true)
+                .setStyle(new Notification.BigTextStyle().bigText(body))
+                .setAutoCancel(!incomingCall)
                 .setContentIntent(pending)
-                .setPriority(Notification.PRIORITY_HIGH)
-                .setCategory("incoming_call".equals(notificationType) ? Notification.CATEGORY_CALL : Notification.CATEGORY_MESSAGE);
-        manager.notify((int) (System.currentTimeMillis() & 0x7fffffff), builder.build());
+                .setPriority(incomingCall ? Notification.PRIORITY_MAX : Notification.PRIORITY_HIGH)
+                .setCategory(incomingCall ? Notification.CATEGORY_CALL : Notification.CATEGORY_MESSAGE);
+        if (!incomingCall && data != null && "message".equals(data.get("type"))) {
+            if (!conversationId.isEmpty()) {
+                int actionId = conversationId.hashCode();
+                Intent replyIntent = new Intent(this, MessageNotificationActionReceiver.class);
+                replyIntent.setAction(MessageNotificationActionReceiver.ACTION_REPLY);
+                replyIntent.putExtra("conversationId", conversationId);
+                PendingIntent replyPending = PendingIntent.getBroadcast(this, actionId + 11, replyIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_MUTABLE : 0));
+                RemoteInput remoteInput = new RemoteInput.Builder(MessageNotificationActionReceiver.KEY_TEXT_REPLY)
+                        .setLabel("Write a message…").build();
+                Notification.Action replyAction = new Notification.Action.Builder(
+                        R.drawable.ic_stat_olunaa, "Reply", replyPending)
+                        .addRemoteInput(remoteInput).setAllowGeneratedReplies(true)
+                        .setSemanticAction(Notification.Action.SEMANTIC_ACTION_REPLY).build();
+                builder.addAction(replyAction);
+
+                Intent readIntent = new Intent(this, MessageNotificationActionReceiver.class);
+                readIntent.setAction(MessageNotificationActionReceiver.ACTION_MARK_READ);
+                readIntent.putExtra("conversationId", conversationId);
+                PendingIntent readPending = PendingIntent.getBroadcast(this, actionId + 12, readIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
+                builder.addAction(R.drawable.ic_stat_olunaa, "Mark as read", readPending);
+                builder.setGroup("olunaa-chat-" + conversationId);
+            }
+        }
+        if (incomingCall) {
+            Intent acceptIntent = new Intent(this, MainActivity.class);
+            acceptIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            acceptIntent.putExtra("type", "incoming_call");
+            acceptIntent.putExtra("call_action", "accept");
+            for (String key : new String[]{"callId", "conversationId", "mode", "callerName"}) {
+                String value = data.get(key);
+                if (value != null) acceptIntent.putExtra(key, value);
+            }
+            PendingIntent accept = PendingIntent.getActivity(this, requestCode + 1, acceptIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
+            Intent declineIntent = new Intent(this, MainActivity.class);
+            declineIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            declineIntent.putExtra("type", "incoming_call");
+            declineIntent.putExtra("call_action", "decline");
+            declineIntent.putExtra("callId", data.getOrDefault("callId", ""));
+            declineIntent.putExtra("conversationId", conversationId);
+            declineIntent.putExtra("mode", data.getOrDefault("mode", "audio"));
+            declineIntent.putExtra("callerName", title);
+            PendingIntent decline = PendingIntent.getActivity(this, requestCode + 2, declineIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
+            if (Build.VERSION.SDK_INT >= 31) {
+                android.app.Person caller = new android.app.Person.Builder()
+                        .setName(title == null || title.isEmpty() ? "OLUNAA contact" : title)
+                        .build();
+                builder.setStyle(Notification.CallStyle.forIncomingCall(caller, decline, accept));
+                if (Build.VERSION.SDK_INT < 34 || manager.canUseFullScreenIntent()) {
+                    builder.setFullScreenIntent(pending, true);
+                }
+            } else {
+                builder.addAction(R.drawable.ic_stat_olunaa, "Answer", accept);
+                builder.addAction(R.drawable.ic_stat_olunaa, "Decline", decline);
+                builder.setFullScreenIntent(pending, true);
+            }
+        }
+        Bitmap senderAvatar = loadSenderAvatar(data == null ? "" : data.getOrDefault("senderAvatarUrl", ""));
+        if (senderAvatar != null) builder.setLargeIcon(senderAvatar);
+        int notificationId = data != null && !data.getOrDefault("conversationId", "").isEmpty() && !incomingCall
+                ? data.get("conversationId").hashCode() : (int) (System.currentTimeMillis() & 0x7fffffff);
+        manager.notify(notificationId, builder.build());
+    }
+
+    /** Loads a small sender photo for the Android notification when the server can safely include it. */
+    private Bitmap loadSenderAvatar(String source) {
+        if (source == null || source.isEmpty()) return null;
+        try {
+            byte[] bytes;
+            if (source.startsWith("data:image/")) {
+                int comma = source.indexOf(',');
+                if (comma < 0 || source.length() > 3000) return null;
+                bytes = Base64.decode(source.substring(comma + 1), Base64.DEFAULT);
+            } else if (source.startsWith("https://") || source.startsWith("http://")) {
+                HttpURLConnection connection = (HttpURLConnection) new URL(source).openConnection();
+                connection.setConnectTimeout(2500);
+                connection.setReadTimeout(2500);
+                connection.setInstanceFollowRedirects(true);
+                try (java.io.InputStream in = connection.getInputStream();
+                     java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+                    byte[] buffer = new byte[4096];
+                    int count;
+                    while ((count = in.read(buffer)) != -1) {
+                        if (out.size() + count > 1024 * 1024) return null;
+                        out.write(buffer, 0, count);
+                    }
+                    bytes = out.toByteArray();
+                } finally {
+                    connection.disconnect();
+                }
+            } else {
+                return null;
+            }
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = Math.max(1, Math.max(bounds.outWidth, bounds.outHeight) / 192);
+            options.inPreferredConfig = Bitmap.Config.RGB_565;
+            return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
+        } catch (Exception error) {
+            android.util.Log.w("OLUNAA-FCM", "Could not load sender notification avatar", error);
+            return null;
+        }
     }
 }

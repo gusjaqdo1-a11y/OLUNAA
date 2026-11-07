@@ -27,6 +27,7 @@ model User {
   stories             Story[]
   storyViews          StoryView[]          @relation("viewer")
   reactions           Reaction[]
+  pollVotes            PollVote[]
   notifications       Notification[]       @relation("recipient")
   sentNotifications   Notification[]       @relation("actor")
   conversationMembers ConversationMember[]
@@ -116,6 +117,7 @@ model Message {
   sender User @relation("sent", fields: [senderId], references: [id], onDelete: Cascade)
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   reactions Reaction[]
+  poll Poll?
   @@index([conversationId, createdAt])
 }
 
@@ -170,6 +172,7 @@ model Channel {
   id String @id @default(cuid()) @map("_id")
   name String
   handle String @unique
+  channelNumber String?
   description String?
   avatarUrl String?
   ownerId String?
@@ -179,6 +182,7 @@ model Channel {
   updatedAt DateTime @updatedAt
   members ChannelMember[]
   messages ChannelMessage[]
+  @@index([channelNumber])
 }
 
 model ChannelMember {
@@ -197,6 +201,8 @@ model ChannelMessage {
   channelId String
   authorId String
   body String
+  mediaUrl String?
+  mediaType String?
   createdAt DateTime @default(now())
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -246,4 +252,58 @@ model DeviceToken {
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId])
+}
+
+
+model Poll {
+  id              String       @id @default(cuid()) @map("_id")
+  messageId       String       @unique
+  question        String
+  multipleChoice  Boolean      @default(false)
+  closesAt        DateTime?
+  createdAt       DateTime     @default(now())
+  message         Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  options         PollOption[]
+  votes           PollVote[]
+}
+
+model PollOption {
+  id        String     @id @default(cuid()) @map("_id")
+  pollId    String
+  text      String
+  voteCount Int        @default(0)
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes     PollVote[]
+  @@index([pollId])
+}
+
+model PollVote {
+  id        String     @id @default(cuid()) @map("_id")
+  pollId    String
+  optionId  String
+  userId    String
+  createdAt DateTime   @default(now())
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([pollId, userId])
+  @@index([optionId])
+}
+
+
+model CallSession {
+  id             String   @id @default(cuid()) @map("_id")
+  conversationId String
+  callerId       String
+  calleeIds      String[]
+  mode           String   @default("audio")
+  status         String   @default("invited")
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+  answeredAt     DateTime?
+  endedAt        DateTime?
+  endedBy        String?
+  @@index([conversationId, createdAt])
+  @@index([status, expiresAt])
+  @@index([callerId, createdAt])
 }
