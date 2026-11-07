@@ -300,7 +300,7 @@ public class MainActivity extends AppCompatActivity {
             }
             horizontal.addView(strip);
             section.addView(horizontal);
-            body.addView(section,body.indexOfChild(body.getChildAt(1))>=0?body.indexOfChild(body.getChildAt(1)):1);
+            body.addView(section,Math.min(1,body.getChildCount()));
         });
     }
 
