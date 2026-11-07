@@ -9,13 +9,13 @@ import android.view.*;
 import android.widget.*;
 
 public class NeonApp extends Application {
-    private static final int BG = Color.rgb(5, 7, 20);
-    private static final int FIELD = Color.rgb(22, 20, 50);
-    private static final int WHITE = Color.rgb(248, 248, 255);
-    private static final int MUTED = Color.rgb(175, 177, 214);
-    private static final int PURPLE = Color.rgb(132, 55, 255);
-    private static final int MAGENTA = Color.rgb(220, 45, 255);
-    private static final int CYAN = Color.rgb(30, 190, 255);
+    private static final int BG = Color.rgb(7, 13, 28);
+    private static final int FIELD = Color.rgb(27, 41, 70);
+    private static final int WHITE = Color.rgb(242, 246, 255);
+    private static final int MUTED = Color.rgb(145, 161, 190);
+    private static final int PURPLE = Color.rgb(67, 139, 255);
+    private static final int MAGENTA = Color.rgb(42, 91, 232);
+    private static final int CYAN = Color.rgb(80, 190, 255);
     private SharedPreferences.OnSharedPreferenceChangeListener tokenListener;
 
     @Override
@@ -47,9 +47,9 @@ public class NeonApp extends Application {
     private GradientDrawable fieldBackground() {
         GradientDrawable drawable = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{FIELD, Color.rgb(20, 20, 58)});
+                new int[]{FIELD, Color.rgb(13, 22, 43)});
         drawable.setCornerRadius(24);
-        drawable.setStroke(1, Color.rgb(73, 61, 160));
+        drawable.setStroke(1, Color.rgb(55, 100, 170));
         return drawable;
     }
 

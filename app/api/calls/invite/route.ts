@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     });
     await publishUserEvent(member.userId, "call:invite", invite);
   }));
-  await sendPushToUsers(members.map(x => x.userId), { title: me.displayName, body: mode === "video" ? "Incoming video call" : "Incoming voice call", data: { type: "incoming_call", conversationId, mode } });
+  await sendPushToUsers(members.map(x => x.userId), { title: me.displayName, body: mode === "video" ? "Incoming video call" : "Incoming voice call", data: { type: "incoming_call", conversationId, mode, callerName: me.displayName } });
   const failed = results.filter(x => x.status === "rejected").length;
   if (failed === results.length) return NextResponse.json({ error: "Could not notify the other participants." }, { status: 502 });
   return NextResponse.json({ ok: true, notified: results.length - failed, realtimeConfigured: !!process.env.ABLY_API_KEY });
