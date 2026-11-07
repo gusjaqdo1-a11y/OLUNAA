@@ -190,7 +190,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(b);WindowCompat.enableEdgeToEdge(getWindow());getWindow().setStatusBarColor(Color.TRANSPARENT);getWindow().setNavigationBarColor(Color.TRANSPARENT);prefs=getSharedPreferences("olunaa_session",MODE_PRIVATE);
         String savedTheme=prefs.getString("theme","dark");dark=savedTheme.equals("system")?((getResources().getConfiguration().uiMode&android.content.res.Configuration.UI_MODE_NIGHT_MASK)==android.content.res.Configuration.UI_MODE_NIGHT_YES):!savedTheme.equals("light");
         WindowInsetsControllerCompat bars=WindowCompat.getInsetsController(getWindow(),getWindow().getDecorView());bars.setAppearanceLightStatusBars(!dark);bars.setAppearanceLightNavigationBars(!dark);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE,WindowManager.LayoutParams.FLAG_SECURE);requestNotifications();
+        requestNotifications();
         if(prefs.getBoolean("lock",false)&&hasUser())biometric();else if(hasUser()){restoreUser();showHome("Chats");handleIncomingCallIntent(getIntent());handleMessageNotificationIntent(getIntent());}else showAuth(false);
     }
     private void requestNotifications(){if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},REQ_NOTIF);}
