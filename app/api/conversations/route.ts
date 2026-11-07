@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { userId } = await req.json();
   if (!userId || userId === me.id) return NextResponse.json({ error: "Invalid recipient" }, { status: 400 });
-  const existing = await db.conversation.findFirst({ where: { type: "direct", members: { every: { userId: { in: [me.id, userId] } } } }, include: { members: true } });
+  const existing = await db.conversation.findFirst({ where: { type: "direct", members: { every: { userId: { in: [me.id, userId] } } } }, include: { members: true }, orderBy: { updatedAt: "desc" } });
   if (existing && existing.members.length === 2) return NextResponse.json({ conversationId: existing.id });
   const conversation = await db.conversation.create({ data: { type: "direct", members: { create: [{ userId: me.id }, { userId }] } } });
   return NextResponse.json({ conversationId: conversation.id }, { status: 201 });
