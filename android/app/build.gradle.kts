@@ -21,15 +21,36 @@ android {
         versionCode = 42
         versionName = "1.4.2"
     }
+    signingConfigs {
+        create("release") {
+            val storePath = System.getenv("OLUNAA_RELEASE_STORE_FILE")
+            val storePasswordValue = System.getenv("OLUNAA_RELEASE_STORE_PASSWORD")
+            val keyAliasValue = System.getenv("OLUNAA_RELEASE_KEY_ALIAS")
+            val keyPasswordValue = System.getenv("OLUNAA_RELEASE_KEY_PASSWORD")
+            if (!storePath.isNullOrBlank() && !storePasswordValue.isNullOrBlank()
+                && !keyAliasValue.isNullOrBlank() && !keyPasswordValue.isNullOrBlank()) {
+                storeFile = file(storePath)
+                storePassword = storePasswordValue
+                keyAlias = keyAliasValue
+                keyPassword = keyPasswordValue
+            }
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            val releaseStoreConfigured = !System.getenv("OLUNAA_RELEASE_STORE_FILE").isNullOrBlank()
+                && !System.getenv("OLUNAA_RELEASE_STORE_PASSWORD").isNullOrBlank()
+                && !System.getenv("OLUNAA_RELEASE_KEY_ALIAS").isNullOrBlank()
+                && !System.getenv("OLUNAA_RELEASE_KEY_PASSWORD").isNullOrBlank()
+            if (releaseStoreConfigured) signingConfig = signingConfigs.getByName("release")
         }
     }
+    testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("androidx.activity:activity:1.10.1")
     implementation("androidx.biometric:biometric:1.4.0-alpha04")
