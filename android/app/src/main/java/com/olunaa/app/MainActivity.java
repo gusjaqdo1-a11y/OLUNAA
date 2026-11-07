@@ -17,6 +17,10 @@ import android.text.InputType;
 import android.view.*;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.webkit.WebChromeClient;
+import android.webkit.JavascriptInterface;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
@@ -52,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
     private int homeGeneration=0;
     private android.content.SharedPreferences prefs;
     private LinearLayout root, body;
+    private WebView prototypeWebView;
     private String meId="", meUsername="", meName="", meAvatar="", activeConversation="", activeOtherName="", activeOtherAvatar="", activeGroupId="";
     private boolean dark=true;
     private int mediaMode=0;
@@ -191,7 +196,8 @@ public class MainActivity extends AppCompatActivity {
         String savedTheme=prefs.getString("theme","dark");dark=savedTheme.equals("system")?((getResources().getConfiguration().uiMode&android.content.res.Configuration.UI_MODE_NIGHT_MASK)==android.content.res.Configuration.UI_MODE_NIGHT_YES):!savedTheme.equals("light");
         WindowInsetsControllerCompat bars=WindowCompat.getInsetsController(getWindow(),getWindow().getDecorView());bars.setAppearanceLightStatusBars(!dark);bars.setAppearanceLightNavigationBars(!dark);
         requestNotifications();
-        if(prefs.getBoolean("lock",false)&&hasUser())biometric();else if(hasUser()){restoreUser();showHome("Chats");handleIncomingCallIntent(getIntent());handleMessageNotificationIntent(getIntent());}else showAuth(false);
+        if(hasUser()) restoreUser();
+        showChatQurxan();
     }
     private void requestNotifications(){if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},REQ_NOTIF);}
     private boolean hasUser(){return !prefs.getString("id","").isEmpty()&&!prefs.getString("username","").isEmpty();}
@@ -199,6 +205,54 @@ public class MainActivity extends AppCompatActivity {
     private void saveUser(){prefs.edit().putString("id",meId).putString("username",meUsername).putString("name",meName).putString("avatar",meAvatar).apply();}
     private void setUser(JSONObject u){if(u==null)return;meId=u.optString("id",meId);meUsername=u.optString("username",meUsername);meName=u.optString("displayName",meName);meAvatar=u.optString("avatarUrl",meAvatar);prefs.edit().putBoolean("verified",u.optBoolean("verified",prefs.getBoolean("verified",false))).apply();saveUser();}
     private void message(String s){main.post(()->Toast.makeText(this,s,Toast.LENGTH_SHORT).show());}
+
+
+    private void showChatQurxan(){
+        stopPoll();
+        prototypeWebView = new WebView(this);
+        prototypeWebView.setBackgroundColor(Color.rgb(5,4,15));
+        android.webkit.WebSettings settings = prototypeWebView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+        settings.setLoadsImagesAutomatically(true);
+        settings.setSupportZoom(false);
+        prototypeWebView.setWebViewClient(new WebViewClient());
+        prototypeWebView.setWebChromeClient(new WebChromeClient());
+        prototypeWebView.addJavascriptInterface(new PrototypeBridge(), "OLUNAA");
+        setContentView(prototypeWebView);
+        prototypeWebView.loadUrl("file:///android_asset/chatqurxan-ultra.html");
+    }
+
+    private final class PrototypeBridge {
+        @JavascriptInterface public boolean hasSession(){ return MainActivity.this.hasUser(); }
+        @JavascriptInterface public String sessionUser(){
+            JSONObject u=new JSONObject();
+            try{u.put("id",prefs.getString("id",""));u.put("username",prefs.getString("username",""));u.put("displayName",prefs.getString("name",""));u.put("avatarUrl",prefs.getString("avatar",""));}catch(Exception ignored){}
+            return u.toString();
+        }
+        @JavascriptInterface public void request(String path,String method,String body,String callbackId){
+            JSONObject payload=null;
+            try{if(body!=null&&!body.isEmpty()&&!body.equals("null"))payload=new JSONObject(body);}catch(Exception ignored){}
+            api(path,method==null?"GET":method,payload,result->{
+                if(prototypeWebView==null)return;
+                JSONObject envelope=new JSONObject();
+                try{envelope.put("ok",result.ok);envelope.put("error",result.error);envelope.put("data",result.data);}catch(Exception ignored){}
+                String js="window.__nativeResponse && window.__nativeResponse("+JSONObject.quote(callbackId)+","+envelope.toString()+");";
+                prototypeWebView.evaluateJavascript(js,null);
+            });
+        }
+        @JavascriptInterface public void saveSession(String userJson){
+            try{JSONObject u=new JSONObject(userJson);setUser(u);}catch(Exception ignored){}
+        }
+        @JavascriptInterface public void logout(){
+            prefs.edit().clear().apply();
+            meId="";meUsername="";meName="";meAvatar="";
+        }
+    }
 
     private void showAuth(boolean register){
         stopPoll();rootBase();ScrollView scroll=new ScrollView(this);LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setGravity(Gravity.CENTER_HORIZONTAL);box.setPadding(dp(8),dp(24),dp(8),dp(30));scroll.addView(box);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
