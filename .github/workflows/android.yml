@@ -17,6 +17,11 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      OLUNAA_KEYSTORE_SECRET: ${{ secrets.OLUNAA_RELEASE_KEYSTORE_BASE64 }}
+      OLUNAA_STORE_PASSWORD_SECRET: ${{ secrets.OLUNAA_RELEASE_STORE_PASSWORD }}
+      OLUNAA_KEY_ALIAS_SECRET: ${{ secrets.OLUNAA_RELEASE_KEY_ALIAS }}
+      OLUNAA_KEY_PASSWORD_SECRET: ${{ secrets.OLUNAA_RELEASE_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -31,12 +36,12 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - name: Configure managed release signing
         id: signing
-        if: ${{ secrets.OLUNAA_RELEASE_KEYSTORE_BASE64 != '' && secrets.OLUNAA_RELEASE_STORE_PASSWORD != '' && secrets.OLUNAA_RELEASE_KEY_ALIAS != '' && secrets.OLUNAA_RELEASE_KEY_PASSWORD != '' }}
+        if: ${{ env.OLUNAA_KEYSTORE_SECRET != '' && env.OLUNAA_STORE_PASSWORD_SECRET != '' && env.OLUNAA_KEY_ALIAS_SECRET != '' && env.OLUNAA_KEY_PASSWORD_SECRET != '' }}
         env:
-          KEYSTORE_BASE64: ${{ secrets.OLUNAA_RELEASE_KEYSTORE_BASE64 }}
-          STORE_PASSWORD: ${{ secrets.OLUNAA_RELEASE_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.OLUNAA_RELEASE_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.OLUNAA_RELEASE_KEY_PASSWORD }}
+          KEYSTORE_BASE64: ${{ env.OLUNAA_KEYSTORE_SECRET }}
+          STORE_PASSWORD: ${{ env.OLUNAA_STORE_PASSWORD_SECRET }}
+          KEY_ALIAS: ${{ env.OLUNAA_KEY_ALIAS_SECRET }}
+          KEY_PASSWORD: ${{ env.OLUNAA_KEY_PASSWORD_SECRET }}
         run: |
           KEYSTORE_PATH="$RUNNER_TEMP/olunaa-release.jks"
           echo "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
