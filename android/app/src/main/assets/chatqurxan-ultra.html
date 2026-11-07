@@ -205,7 +205,17 @@ select.in option{color:#111}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01s!important}}
 @media (min-width:600px){#app{height:min(900px,100%);margin:auto;border-radius:38px;border:1px solid var(--line);box-shadow:0 30px 90px rgba(0,0,0,.6)}body{align-items:center}}
 </style>
-</head>
+<style>
+#authGate{position:fixed;z-index:99999;inset:0;display:grid;place-items:center;padding:24px;background:radial-gradient(70% 55% at 10% 0%,rgba(139,92,246,.35),transparent),linear-gradient(165deg,#05040f,#0d0a26)}
+.authbox{width:min(100%,390px);border-radius:30px;padding:28px 22px;text-align:center}
+.authbrand{font-size:34px;font-weight:700;letter-spacing:-1.5px;background:linear-gradient(90deg,#f4f3ff,#fb923c);color:transparent;background-clip:text}
+.authsub{color:#aaa6cf;margin:8px 0 24px}
+.authfields{display:grid;gap:12px}
+.authfields input{height:54px;border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:0 16px;background:rgba(255,255,255,.08);outline:none;color:#fff}
+.authgo{width:100%;height:54px;margin-top:16px;border-radius:18px;background:linear-gradient(110deg,#fb7185,#f59e0b);color:white;font-weight:700}
+.authswitch{margin-top:15px;color:#c4b5fd}
+.autherror{min-height:22px;color:#fda4af;font-size:12px;margin-top:10px}
+</style></head>
 <body>
 <div id="app">
 <div class="orb a"></div><div class="orb b"></div><div class="orb c"></div><div class="gridfx"></div>
@@ -486,6 +496,74 @@ $('cin').onclick=function(){startCall(formC(),'in',false)};$('cinv').onclick=fun
 $('cmiss').onclick=function(){var c=formC();if(!c)return;CALLS.unshift({c:c.id,k:'miss',v:0,tm:hm(),d:0});saveC();renderCalls();beep();toast(c,'Missed voice call')};
 $('cans').onclick=function(){if(CC&&(CC.st=='ringing'||CC.st=='ring'))connect()};$('cend').onclick=function(){if(CC)endCall('end')};
 $('ft').value=hm();
+
+/* ---------- OLUNAA production bridge ---------- */
+var nativeSeq=0,nativePending={};
+window.__nativeResponse=function(id,result){var cb=nativePending[id];if(cb){delete nativePending[id];cb(result||{ok:false,error:'Request failed',data:{}})}};
+function nativeRequest(path,method,body,cb){
+ if(!window.OLUNAA){if(cb)cb({ok:false,error:'Native service unavailable',data:{}});return}
+ var id='n'+(++nativeSeq);nativePending[id]=cb||function(){};
+ window.OLUNAA.request(path,method||'GET',body?JSON.stringify(body):'',id);
+}
+function mapServerMessage(m){
+ var d=new Date(m.createdAt||Date.now()),mine=m.senderId===window.__meId;
+ return {id:m.id,t:m.body||'',me:mine?1:0,tm:hm(d),s:m.seenAt?'read':m.deliveredAt?'delivered':'sent',v:(m.mediaType||'').indexOf('audio')===0?1:0,a:m.mediaUrl||'',mediaType:m.mediaType||''};
+}
+function loadProductionChats(){
+ nativeRequest('/conversations','GET',null,function(r){
+  if(!r.ok){note(r.error||'Unable to load chats');return}
+  var rows=r.data.conversations||[];
+  D=rows.map(function(x,i){var p=x.other||{},last=x.lastMessage;return {id:i+1,cid:x.id,n:p.displayName||p.username||'Group',h:(String(p.id||x.id).split('').reduce(function(a,c){return a+c.charCodeAt(0)},0)*47)%360,sd:i%4,on:p.online?1:0,vf:p.verified?1:0,g:x.type==='group'?1:0,pin:0,u:0,m:last?[{id:last.id,t:last.body||'',me:last.senderId===window.__meId?1:0,tm:hm(new Date(last.createdAt)),s:last.seenAt?'read':last.deliveredAt?'delivered':'sent'}]:[],story:[]};});
+  nid=D.length+1;renderList();renderStories();renderCalls();
+ });
+}
+var originalOpenRoom=openRoom;
+openRoom=function(id){
+ var c=byId(id);if(!c)return;
+ originalOpenRoom(id);
+ nativeRequest('/messages?conversationId='+encodeURIComponent(c.cid),'GET',null,function(r){
+  if(!r.ok){note(r.error||'Unable to load messages');return}
+  var rows=r.data.messages||[];c.m=rows.map(mapServerMessage);
+  if(cur&&cur.id===c.id){renderMsgs();head()}
+  renderList();
+ });
+};
+push=function(c,m){
+ if(!m.me||!c.cid){note('This conversation is not connected to the server');return}
+ nativeRequest('/messages','POST',{conversationId:c.cid,body:m.t||'',mediaUrl:m.mediaUrl||null,mediaType:m.mediaType||null},function(r){
+  if(!r.ok){note(r.error||'Message could not be sent');return}
+  var sent=mapServerMessage(r.data.message);c.m.push(sent);
+  if(cur&&cur.id===c.id)renderMsgs();renderList();
+ });
+};
+autoReply=function(){};
+function showAuthGate(){
+ var gate=document.createElement('div');gate.id='authGate';
+ gate.innerHTML='<div class="authbox glass"><div class="authbrand">OLUNAA</div><p class="authsub">Private conversations, beautifully connected.</p><div class="authfields" id="authFields"><input id="authIdent" autocomplete="username" placeholder="Email or @username"><input id="authPass" type="password" autocomplete="current-password" placeholder="Password"></div><button id="authGo" class="authgo">Sign in</button><button id="authSwitch" class="authswitch">Create an account</button><div id="authError" class="autherror"></div></div>';
+ document.body.appendChild(gate);
+ var registering=false;
+ $('authSwitch').onclick=function(){registering=!registering;$('authGo').textContent=registering?'Create account':'Sign in';$('authSwitch').textContent=registering?'Already have an account? Sign in':'Create an account';$('authFields').innerHTML=(registering?'<input id="authName" placeholder="Display name"><input id="authEmail" type="email" placeholder="Email address">':'')+'<input id="authIdent" autocomplete="username" placeholder="'+(registering?'Username':'Email or @username')+'"><input id="authPass" type="password" autocomplete="'+(registering?'new-password':'current-password')+'" placeholder="Password">';};
+ $('authGo').onclick=function(){
+  var body={password:$('authPass').value};
+  if(registering){body.displayName=$('authName').value;body.email=$('authEmail').value;body.username=$('authIdent').value.replace(/^@/,'')}
+  else body.identifier=$('authIdent').value.replace(/^@/,'');
+  $('authGo').disabled=true;$('authError').textContent='Connecting securely…';
+  nativeRequest(registering?'/auth/register':'/auth/login','POST',body,function(r){
+   $('authGo').disabled=false;
+   if(!r.ok){$('authError').textContent=r.error||'Sign in failed';return}
+   var u=r.data.user||{};window.__meId=u.id||'';window.OLUNAA.saveSession(JSON.stringify(u));gate.remove();loadProductionChats();
+  });
+ };
+}
+function startProduction(){
+ var session={};try{session=JSON.parse(window.OLUNAA.sessionUser()||'{}')}catch(e){}
+ window.__meId=session.id||'';
+ if(window.OLUNAA.hasSession()){
+  nativeRequest('/auth/me','GET',null,function(r){if(!r.ok){showAuthGate();return}var u=r.data.user||{};window.__meId=u.id||window.__meId;loadProductionChats()});
+ }else showAuthGate();
+}
+startProduction();
+
 document.addEventListener('pointerdown',function(e){if(e.target.closest('button,.sw')){try{if(navigator.vibrate)navigator.vibrate(6)}catch(x){}}},true);
 icons();$('meav').innerHTML=av(ME,0);sync();applyTheme();applyWp();renderList();
 })();
