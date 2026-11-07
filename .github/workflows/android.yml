@@ -29,26 +29,57 @@ jobs:
         run: |
           VERSION=$(grep -o 'versionName = "[^"]*"' android/app/build.gradle.kts | cut -d '"' -f2)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Configure managed release signing
+        id: signing
+        if: ${{ secrets.OLUNAA_RELEASE_KEYSTORE_BASE64 != '' && secrets.OLUNAA_RELEASE_STORE_PASSWORD != '' && secrets.OLUNAA_RELEASE_KEY_ALIAS != '' && secrets.OLUNAA_RELEASE_KEY_PASSWORD != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.OLUNAA_RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.OLUNAA_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.OLUNAA_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.OLUNAA_RELEASE_KEY_PASSWORD }}
+        run: |
+          KEYSTORE_PATH="$RUNNER_TEMP/olunaa-release.jks"
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          echo "OLUNAA_RELEASE_STORE_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+          echo "OLUNAA_RELEASE_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "OLUNAA_RELEASE_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "OLUNAA_RELEASE_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+          echo "configured=true" >> "$GITHUB_OUTPUT"
       - name: Accept Android licenses
         run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null || true
       - name: Install Android SDK components
         run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
       - name: Configure Gradle cache
         uses: gradle/actions/setup-gradle@v6
+      - name: Run JVM unit tests
+        working-directory: android
+        run: gradle testDebugUnitTest
       - name: Build release APK
         working-directory: android
         run: gradle assembleRelease
+      - name: Verify APK and generate checksum
+        id: apk
+        run: |
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          mkdir -p release-metadata
+          sha256sum "$APK" | tee release-metadata/app-release.apk.sha256
+          if [ -n "${OLUNAA_RELEASE_STORE_FILE:-}" ]; then
+            apksigner verify --verbose "$APK"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+          printf 'source_commit=%s\nversion=%s\nrun_id=%s\nsigned=%s\n' "$GITHUB_SHA" "${{ steps.android-version.outputs.version }}" "$GITHUB_RUN_ID" "${{ steps.apk.outputs.signed }}" > release-metadata/build-info.txt
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OLUNAA-release-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
-      - name: Upload debug APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: OLUNAA-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-      - name: Publish GitHub Release
+          name: OLUNAA-release-apk-${{ github.sha }}
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            release-metadata/*
+      - name: Publish signed GitHub Release
+        if: ${{ steps.signing.outputs.configured == 'true' && steps.apk.outputs.signed == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "v${{ steps.android-version.outputs.version }}-build${{ github.run_number }}"
@@ -56,4 +87,4 @@ jobs:
           generate_release_notes: true
           files: |
             android/app/build/outputs/apk/release/app-release.apk
-            android/app/build/outputs/apk/debug/app-debug.apk
+            release-metadata/*
