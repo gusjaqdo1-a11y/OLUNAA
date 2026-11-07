@@ -209,12 +209,12 @@ public class MainActivity extends AppCompatActivity {
         ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.setClipToPadding(false);sc.addView(body);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
         if(tab.equals("Chats")){loadHomeStoryStrip();}
         LinearLayout nav=new LinearLayout(this);GradientDrawable navBackground=rounded(Color.rgb(9,16,34),dp(23));navBackground.setStroke(dp(1),Color.argb(65,66,146,255));nav.setBackground(navBackground);nav.setPadding(dp(5),dp(6),dp(5),dp(6));
-        String[] labels={"Chats","Updates","Communities","Calls","Settings"};int[] icons={R.drawable.ic_nav_chats,R.drawable.ic_nav_updates,R.drawable.ic_nav_communities,R.drawable.ic_nav_calls,R.drawable.ic_nav_settings};
-        for(int i=0;i<labels.length;i++){final String n=labels[i];boolean selected=n.equals(tab);LinearLayout item=new LinearLayout(this);item.setOrientation(LinearLayout.VERTICAL);item.setGravity(Gravity.CENTER);
+        String[] routes=HomeNavigation.routes();int[] icons={R.drawable.ic_nav_chats,R.drawable.ic_nav_updates,R.drawable.ic_nav_communities,R.drawable.ic_nav_calls,R.drawable.ic_nav_settings};
+        for(int i=0;i<routes.length;i++){final String route=routes[i];final String n=HomeNavigation.labelForRoute(route);boolean selected=route.equals(tab);LinearLayout item=new LinearLayout(this);item.setOrientation(LinearLayout.VERTICAL);item.setGravity(Gravity.CENTER);
             item.setBackground(selected?gradient(Color.rgb(38,91,191),Color.rgb(20,54,120),dp(16)):rounded(Color.TRANSPARENT,dp(16)));
             ImageView icon=new ImageView(this);icon.setImageResource(icons[i]);icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);icon.setImageTintList(android.content.res.ColorStateList.valueOf(selected?Color.WHITE:Color.rgb(120,157,210)));icon.setContentDescription(n);item.addView(icon,new LinearLayout.LayoutParams(dp(25),dp(27)));
             TextView label=tv(n,9,selected?Color.WHITE:Color.rgb(132,151,185));label.setTypeface(null,selected?1:0);label.setGravity(Gravity.CENTER);item.addView(label,new LinearLayout.LayoutParams(-1,dp(17)));
-            item.setOnClickListener(v->{if("Settings".equals(n))showSettings();else showHome(n);});nav.addView(item,new LinearLayout.LayoutParams(0,dp(49),1));
+            item.setOnClickListener(v->{if("Settings".equals(route))showSettings();else showHome(route);});nav.addView(item,new LinearLayout.LayoutParams(0,dp(49),1));
         }
         root.addView(nav,lp(dp(59),dp(5)));
         if(tab.equals("Chats"))loadChats();else if(tab.equals("Updates"))loadStatus();else if(tab.equals("Communities"))loadChannels();else if(tab.equals("Calls"))loadCalls();else if(tab.equals("Alerts"))loadNotifications();else if(tab.equals("Profile"))loadProfile();else showSettings();
