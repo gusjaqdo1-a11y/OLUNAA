@@ -6,6 +6,8 @@ import android.content.*;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.provider.MediaStore;
+import android.media.MediaRecorder;
+import android.media.MediaPlayer;
 import android.graphics.*;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Drawable;
@@ -53,6 +55,13 @@ public class MainActivity extends AppCompatActivity {
     private String meId="", meUsername="", meName="", meAvatar="", activeConversation="", activeOtherName="", activeOtherAvatar="", activeGroupId="";
     private boolean dark=true;
     private int mediaMode=0;
+    private static final int REQ_AUDIO_RECORD=707;
+    private MediaRecorder voiceRecorder;
+    private File voiceRecordingFile,activeVoiceFile;
+    private MediaPlayer activeVoicePlayer;
+    private boolean recordingVoice=false;
+    private TextView voiceRecordControl;
+    private LinearLayout activeVoiceList;
     private Runnable poller,typingDebounce,presencePoller;
     private TextView chatPresence,chatReplyHint;
     private AblyRealtime realtimeClient,chatRealtimeClient;
@@ -508,8 +517,10 @@ public class MainActivity extends AppCompatActivity {
         composer.addView(textBox,new LinearLayout.LayoutParams(0,-2,1));
         textBox.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence x,int st,int c,int a){}public void onTextChanged(CharSequence x,int st,int before,int count){if(typingDebounce!=null)main.removeCallbacks(typingDebounce);String value=x.toString().trim();typingDebounce=()->setTyping(!value.isEmpty());main.postDelayed(typingDebounce,450);}public void afterTextChanged(android.text.Editable e){}});
         TextView emoji=tv("☺",25,GREEN);emoji.setGravity(Gravity.CENTER);emoji.setContentDescription("Choose emoji");composer.addView(emoji,new LinearLayout.LayoutParams(dp(38),dp(50)));
+        TextView mic=tv("🎙",19,GREEN);mic.setGravity(Gravity.CENTER);mic.setContentDescription("Record voice message");mic.setBackground(rounded(Color.argb(dark?65:28,139,92,246),dp(15)));composer.addView(mic,new LinearLayout.LayoutParams(dp(42),dp(44)));
         ImageView send=new ImageView(this);send.setImageResource(R.drawable.ic_action_send);send.setImageTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));send.setPadding(dp(12),dp(12),dp(12),dp(12));send.setBackground(gradient(GREEN2,GREEN,dp(50)));composer.addView(send,new LinearLayout.LayoutParams(dp(46),dp(46)));root.addView(composer,lp(-2,dp(4)));
         back.setOnClickListener(v->showHome("Chats"));attach.setOnClickListener(v->{mediaMode=3;pickImage();});emoji.setOnClickListener(v->showEmojiPicker(textBox));
+        mic.setOnClickListener(v->{if(recordingVoice)stopVoiceRecording(messages);else beginVoiceRecording(mic,messages);});
         send.setOnClickListener(v->sendMessage(textBox,messages));textBox.setOnEditorActionListener((v,a,e)->{if(a==android.view.inputmethod.EditorInfo.IME_ACTION_SEND){sendMessage(textBox,messages);return true;}return false;});
         voice.setOnClickListener(v->callNotice(false));video.setOnClickListener(v->callNotice(true));
         loadMessages(messages);startChatRealtime(id,messages);poller=()->{loadMessages(messages);main.postDelayed(poller,8000);};main.postDelayed(poller,8000);presencePoller=()->{if(id.equals(activeConversation)){refreshChatPresence();main.postDelayed(presencePoller,1400);}};main.postDelayed(presencePoller,500);
@@ -576,7 +587,9 @@ public class MainActivity extends AppCompatActivity {
         String media=safeString(m,"mediaUrl","");
         String mediaType=safeString(m,"mediaType","");
         if(!media.isEmpty()){
-            if(mediaType.startsWith("video")||media.startsWith("data:video/")){
+            if(mediaType.startsWith("audio")||media.startsWith("data:audio/")){
+                TextView audio=tv("▶   Voice message",14,mine?Color.WHITE:GREEN);audio.setTypeface(null,1);audio.setGravity(Gravity.CENTER_VERTICAL);audio.setPadding(dp(14),dp(12),dp(14),dp(12));audio.setBackground(rounded(mine?Color.argb(42,255,255,255):field(),dp(14)));cardMessage.addView(audio,new LinearLayout.LayoutParams(dp(224),dp(48)));audio.setOnClickListener(v->playVoiceMessage(media,audio));
+            }else if(mediaType.startsWith("video")||media.startsWith("data:video/")){
                 VideoView video=videoPreview(media);
                 LinearLayout.LayoutParams vp=new LinearLayout.LayoutParams(dp(248),dp(190));
                 vp.bottomMargin=dp(5);
