@@ -4,6 +4,13 @@ import { getCurrentUser } from "../../../lib/auth";
 
 export const runtime = "nodejs";
 
+export async function GET() {
+  const me = await getCurrentUser();
+  if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const settings = await db.userSettings.findUnique({ where: { userId: me.id } });
+  return NextResponse.json({ settings: settings ?? {} });
+}
+
 export async function PATCH(req: Request) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
