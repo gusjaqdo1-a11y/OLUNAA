@@ -3,6 +3,15 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val releaseStoreFile = file("release-keystore.jks")
+val releaseStorePassword = System.getenv("OLUNAA_RELEASE_KEYSTORE_PASSWORD")
+val releaseKeyAlias = System.getenv("OLUNAA_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("OLUNAA_RELEASE_KEY_PASSWORD")
+val hasProductionSigning = releaseStoreFile.exists() &&
+    !releaseStorePassword.isNullOrBlank() &&
+    !releaseKeyAlias.isNullOrBlank() &&
+    !releaseKeyPassword.isNullOrBlank()
+
 android {
     lint {
         disable += "NullSafeMutableLiveData"
@@ -21,10 +30,26 @@ android {
         versionCode = 50
         versionName = "1.5.0"
     }
+    signingConfigs {
+        create("production") {
+            if (hasProductionSigning) {
+                storeFile = releaseStoreFile
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            // CI supplies the production keystore. Debug signing remains a local
+            // development fallback only; the workflow fails if release secrets are absent.
+            signingConfig = if (hasProductionSigning) {
+                signingConfigs.getByName("production")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
