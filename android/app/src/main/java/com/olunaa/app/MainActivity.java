@@ -38,8 +38,8 @@ import io.ably.lib.types.Param;
 public class MainActivity extends AppCompatActivity {
     private static final String API="https://olunaa.vercel.app/api";
     private static final int REQ_MEDIA=701, REQ_NOTIF=702, REQ_MEDIA_PERMISSION=703, REQ_CAMERA=704, REQ_DOCUMENT=705, REQ_LOCATION=706;
-    private static final int GREEN=Color.rgb(67,139,255), GREEN2=Color.rgb(42,91,232), BG_D=Color.rgb(7,13,28), SURFACE_D=Color.rgb(13,22,43), CARD_D=Color.rgb(20,31,57), FIELD_D=Color.rgb(27,41,70), TEXT_D=Color.rgb(242,246,255), MUTED_D=Color.rgb(145,161,190);
-    private static final int BG_L=Color.rgb(244,248,255), SURFACE_L=Color.WHITE, CARD_L=Color.rgb(234,241,252), FIELD_L=Color.rgb(226,235,250), TEXT_L=Color.rgb(17,29,52), MUTED_L=Color.rgb(99,116,148);
+    private static final int GREEN=Color.rgb(45,212,255), GREEN2=Color.rgb(43,105,255), BG_D=Color.rgb(5,8,20), SURFACE_D=Color.rgb(10,16,34), CARD_D=Color.rgb(14,23,46), FIELD_D=Color.rgb(17,29,56), TEXT_D=Color.rgb(244,248,255), MUTED_D=Color.rgb(142,160,194);
+    private static final int BG_L=Color.rgb(242,247,255), SURFACE_L=Color.WHITE, CARD_L=Color.rgb(232,240,253), FIELD_L=Color.rgb(222,234,252), TEXT_L=Color.rgb(13,25,49), MUTED_L=Color.rgb(91,111,147);
     private final ExecutorService io=Executors.newCachedThreadPool();
     private final Handler main=new Handler(Looper.getMainLooper());
     private final Map<String,Bitmap> imageCache=new ConcurrentHashMap<>();
@@ -63,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
     private int text(){return dark?TEXT_D:TEXT_L;} private int muted(){return dark?MUTED_D:MUTED_L;}
     private GradientDrawable rounded(int c,float r){GradientDrawable g=new GradientDrawable();g.setColor(c);g.setCornerRadius(r);return g;}
     private GradientDrawable gradient(int a,int b,float r){GradientDrawable g=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{a,b});g.setCornerRadius(r);return g;}
-    private TextView tv(String s,float z,int c){TextView v=new TextView(this);v.setText(s);v.setTextSize(z);v.setTextColor(c);return v;}
+    private TextView tv(String s,float z,int c){TextView v=new TextView(this);v.setText(s);v.setTextSize(z);v.setTextColor(c);v.setIncludeFontPadding(false);v.setLetterSpacing(z<=12?0.015f:0.005f);return v;}
     private String safeString(JSONObject object,String key,String fallback){if(object==null||object.isNull(key))return fallback;String value=object.optString(key,fallback);return "null".equalsIgnoreCase(value)?fallback:value;}
     private LinearLayout.LayoutParams lp(int h,int b){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,h);p.setMargins(0,0,0,b);return p;}
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
@@ -72,8 +72,8 @@ public class MainActivity extends AppCompatActivity {
         ViewCompat.setOnApplyWindowInsetsListener(root,(v,in)->{androidx.core.graphics.Insets x=in.getInsets(WindowInsetsCompat.Type.systemBars()|WindowInsetsCompat.Type.displayCutout());v.setPadding(dp(12)+x.left,x.top+dp(8),dp(12)+x.right,x.bottom+dp(6));return in;});
         ViewCompat.requestApplyInsets(root);
     }
-    private EditText input(String hint){EditText e=new EditText(this);e.setHint(hint);e.setHintTextColor(muted());e.setTextColor(text());e.setTextSize(15);e.setSingleLine(true);e.setPadding(dp(18),0,dp(18),0);e.setBackground(rounded(field(),dp(18)));return e;}
-    private Button btn(String s,boolean primary){Button b=new Button(this);b.setText(s);b.setTextColor(primary?Color.WHITE:text());b.setTextSize(14);b.setAllCaps(false);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(14),0,dp(14),0);b.setBackground(primary?gradient(GREEN,GREEN2,dp(18)):rounded(card(),dp(18)));return b;}
+    private EditText input(String hint){EditText e=new EditText(this);e.setHint(hint);e.setHintTextColor(muted());e.setTextColor(text());e.setTextSize(15);e.setSingleLine(true);e.setPadding(dp(18),0,dp(18),0);GradientDrawable shape=rounded(field(),dp(16));shape.setStroke(dp(1),Color.argb(dark?42:28,88,157,255));e.setBackground(shape);return e;}
+    private Button btn(String s,boolean primary){Button b=new Button(this);b.setText(s);b.setTextColor(primary?Color.WHITE:text());b.setTextSize(14);b.setTypeface(null,1);b.setAllCaps(false);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(16),0,dp(16),0);GradientDrawable shape=primary?gradient(GREEN2,GREEN,dp(17)):rounded(card(),dp(17));if(!primary)shape.setStroke(dp(1),Color.argb(dark?48:30,105,155,235));b.setBackground(shape);b.setElevation(dp(primary?3:0));return b;}
     private ImageView logo(int size){ImageView im=new ImageView(this);im.setImageResource(R.drawable.ic_olunaa);im.setScaleType(ImageView.ScaleType.CENTER_INSIDE);return im;}
     private ImageView avatar(String url,int size){ImageView im=new ImageView(this);im.setScaleType(ImageView.ScaleType.CENTER_CROP);im.setBackground(rounded(field(),dp(999)));im.setClipToOutline(true);im.setOutlineProvider(android.view.ViewOutlineProvider.BACKGROUND);im.setContentDescription("Profile photo");im.setPadding(0,0,0,0);if(url!=null&&!url.isEmpty())loadImage(im,url);return im;}
     private Bitmap decodeScaledImage(byte[] bytes, int maxDimension) {
@@ -185,26 +185,38 @@ public class MainActivity extends AppCompatActivity {
 
     private void showHome(String tab){
         long now=SystemClock.elapsedRealtime();if(tab.equals(activeHomeTab)&&now-lastHomeNavigationAt<650L)return;
-        activeHomeTab=tab;lastHomeNavigationAt=now;homeGeneration++;
-        stopPoll();rootBase();
-        if (hasUser() && realtimeClient == null) startIncomingCallListener();
-        LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);top.setPadding(dp(10),dp(8),dp(10),dp(8));top.setBackground(dark?gradient(Color.rgb(17,34,68),Color.rgb(10,18,38),dp(22)):rounded(surface(),dp(22)));
-        top.addView(logo(1),new LinearLayout.LayoutParams(dp(42),dp(46)));
-        LinearLayout titleBox=new LinearLayout(this);titleBox.setOrientation(LinearLayout.VERTICAL);titleBox.setPadding(dp(7),0,0,0);
-        TextView title=tv(tab.equals("Chats")?"OLUNAA":tab,21,text());title.setTypeface(null,1);
-        TextView sub=tv("@"+meUsername,11,muted());titleBox.addView(title);titleBox.addView(sub);
-        top.addView(titleBox,new LinearLayout.LayoutParams(0,dp(48),1));
-        TextView newChat=tv("New Chat",11,text());newChat.setGravity(Gravity.CENTER);newChat.setTypeface(null,1);newChat.setPadding(dp(9),0,dp(9),0);newChat.setBackground(rounded(card(),dp(14)));
-        TextView newGroup=tv("New Group",11,Color.WHITE);newGroup.setGravity(Gravity.CENTER);newGroup.setTypeface(null,1);newGroup.setPadding(dp(9),0,dp(9),0);newGroup.setBackground(gradient(GREEN,GREEN2,dp(14)));
-        ImageView menu=new ImageView(this);menu.setImageResource(R.drawable.ic_action_more);menu.setImageTintList(android.content.res.ColorStateList.valueOf(text()));menu.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        if(tab.equals("Chats")){top.addView(newChat,new LinearLayout.LayoutParams(dp(96),dp(42)));LinearLayout.LayoutParams ngp=new LinearLayout.LayoutParams(dp(104),dp(42));ngp.setMargins(dp(6),0,0,0);top.addView(newGroup,ngp);}else if(tab.equals("Communities")){TextView newChannel=tv("＋ Channel",11,Color.WHITE);newChannel.setGravity(Gravity.CENTER);newChannel.setTypeface(null,1);newChannel.setPadding(dp(9),0,dp(9),0);newChannel.setBackground(gradient(GREEN,GREEN2,dp(14)));top.addView(newChannel,new LinearLayout.LayoutParams(dp(92),dp(42)));newChannel.setOnClickListener(v->createChannelDialog());}else{ImageView searchIcon=new ImageView(this);searchIcon.setImageResource(R.drawable.ic_action_search);searchIcon.setImageTintList(android.content.res.ColorStateList.valueOf(text()));searchIcon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);top.addView(searchIcon,new LinearLayout.LayoutParams(dp(40),dp(42)));searchIcon.setOnClickListener(v->showSearch());}top.addView(menu,new LinearLayout.LayoutParams(dp(28),dp(42)));root.addView(top,lp(dp(66),dp(8)));
-        if(tab.equals("Chats")){LinearLayout searchWrap=new LinearLayout(this);searchWrap.setGravity(Gravity.CENTER_VERTICAL);searchWrap.setPadding(dp(14),0,dp(12),0);searchWrap.setBackground(rounded(field(),dp(16)));ImageView glyph=new ImageView(this);glyph.setImageResource(R.drawable.ic_action_search);glyph.setImageTintList(android.content.res.ColorStateList.valueOf(muted()));searchWrap.addView(glyph,new LinearLayout.LayoutParams(dp(24),dp(48)));EditText query=input("Search chats, people or groups");query.setBackgroundColor(Color.TRANSPARENT);query.setPadding(0,0,0,0);searchWrap.addView(query,new LinearLayout.LayoutParams(0,dp(48),1));root.addView(searchWrap,lp(dp(50),dp(10)));searchWrap.setOnClickListener(v->showSearch());query.setOnClickListener(v->showSearch());}
-        body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.addView(body);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
-        if(tab.equals("Chats")){body.addView(homeWelcomeCard(),lp(-2,dp(12)));loadHomeStoryStrip();}
-        LinearLayout nav=new LinearLayout(this);GradientDrawable navBackground=rounded(surface(),dp(22));navBackground.setStroke(dp(1),Color.argb(dark?45:28,110,145,210));nav.setBackground(navBackground);nav.setPadding(dp(4),dp(5),dp(4),dp(5));
-        String[] labels={"Chats","Updates","Communities","Calls","Settings"};int[] navIcons={R.drawable.ic_nav_chats,R.drawable.ic_nav_updates,R.drawable.ic_nav_communities,R.drawable.ic_nav_calls,R.drawable.ic_nav_settings};
-        for(int i=0;i<labels.length;i++){final String n=labels[i];boolean selected=n.equals(tab);LinearLayout item=new LinearLayout(this);item.setOrientation(LinearLayout.VERTICAL);item.setGravity(Gravity.CENTER);item.setBackground(selected?rounded(Color.argb(dark?38:22,67,139,255),dp(15)):rounded(Color.TRANSPARENT,dp(15)));ImageView icon=new ImageView(this);icon.setImageResource(navIcons[i]);icon.setImageTintList(android.content.res.ColorStateList.valueOf(selected?GREEN:muted()));icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);TextView t=tv(n,10,selected?GREEN:muted());t.setTypeface(null,selected?1:0);t.setGravity(Gravity.CENTER);item.addView(icon,new LinearLayout.LayoutParams(-1,dp(27)));item.addView(t,new LinearLayout.LayoutParams(-1,dp(19)));item.setOnClickListener(v->{if("Settings".equals(n))showSettings();else showHome(n);});nav.addView(item,new LinearLayout.LayoutParams(0,dp(52),1));}
-        root.addView(nav,lp(dp(58),0));newChat.setOnClickListener(v->showSearch());newGroup.setOnClickListener(v->createGroupDialog());menu.setOnClickListener(v->showMenu());
+        activeHomeTab=tab;lastHomeNavigationAt=now;homeGeneration++;stopPoll();rootBase();
+        if(hasUser()&&realtimeClient==null)startIncomingCallListener();
+        LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);top.setPadding(dp(12),dp(10),dp(12),dp(10));
+        GradientDrawable topBg=gradient(Color.rgb(15,31,66),Color.rgb(8,15,32),dp(24));topBg.setStroke(dp(1),Color.argb(55,62,160,255));top.setBackground(topBg);
+        top.addView(logo(1),new LinearLayout.LayoutParams(dp(42),dp(44)));
+        LinearLayout titleBox=new LinearLayout(this);titleBox.setOrientation(LinearLayout.VERTICAL);titleBox.setPadding(dp(9),0,0,0);
+        TextView title=tv(tab.equals("Chats")?"OLUNAA":tab,22,Color.WHITE);title.setTypeface(null,1);
+        TextView sub=tv(tab.equals("Chats")?"YOUR PRIVATE SPACE":"@"+meUsername,9,Color.rgb(132,190,255));sub.setTypeface(null,1);sub.setLetterSpacing(0.13f);
+        titleBox.addView(title);titleBox.addView(sub);top.addView(titleBox,new LinearLayout.LayoutParams(0,dp(46),1));
+        TextView action=tv(tab.equals("Chats")?"＋":"⌕",23,Color.WHITE);action.setGravity(Gravity.CENTER);action.setBackground(rounded(Color.argb(48,55,148,255),dp(15)));top.addView(action,new LinearLayout.LayoutParams(dp(43),dp(43)));
+        action.setOnClickListener(v->{if(tab.equals("Chats"))showSearch();else showSearch();});
+        TextView menu=tv("•••",18,Color.rgb(191,211,245));menu.setGravity(Gravity.CENTER);top.addView(menu,new LinearLayout.LayoutParams(dp(38),dp(43)));menu.setOnClickListener(v->showMenu());
+        root.addView(top,lp(dp(66),dp(12)));
+        if(tab.equals("Chats")){
+            LinearLayout searchWrap=new LinearLayout(this);searchWrap.setGravity(Gravity.CENTER_VERTICAL);searchWrap.setPadding(dp(15),0,dp(14),0);
+            GradientDrawable searchBg=rounded(field(),dp(17));searchBg.setStroke(dp(1),Color.argb(48,68,151,255));searchWrap.setBackground(searchBg);
+            TextView glyph=tv("⌕",24,muted());glyph.setGravity(Gravity.CENTER);searchWrap.addView(glyph,new LinearLayout.LayoutParams(dp(28),dp(49)));
+            EditText query=input("Search messages, people and groups");query.setBackgroundColor(Color.TRANSPARENT);query.setPadding(dp(4),0,0,0);searchWrap.addView(query,new LinearLayout.LayoutParams(0,dp(49),1));
+            root.addView(searchWrap,lp(dp(51),dp(12)));searchWrap.setOnClickListener(v->showSearch());query.setOnClickListener(v->showSearch());
+        }
+        body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(2),dp(2),dp(2),dp(12));
+        ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.setClipToPadding(false);sc.addView(body);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
+        if(tab.equals("Chats")){loadHomeStoryStrip();}
+        LinearLayout nav=new LinearLayout(this);GradientDrawable navBackground=rounded(Color.rgb(9,16,34),dp(23));navBackground.setStroke(dp(1),Color.argb(65,66,146,255));nav.setBackground(navBackground);nav.setPadding(dp(5),dp(6),dp(5),dp(6));
+        String[] labels={"Chats","Updates","Communities","Calls","Settings"};String[] symbols={"◉","◌","◇","⌕","⚙"};
+        for(int i=0;i<labels.length;i++){final String n=labels[i];boolean selected=n.equals(tab);LinearLayout item=new LinearLayout(this);item.setOrientation(LinearLayout.VERTICAL);item.setGravity(Gravity.CENTER);
+            item.setBackground(selected?gradient(Color.rgb(38,91,191),Color.rgb(20,54,120),dp(16)):rounded(Color.TRANSPARENT,dp(16)));
+            TextView icon=tv(symbols[i],21,selected?Color.WHITE:Color.rgb(120,143,181));icon.setGravity(Gravity.CENTER);item.addView(icon,new LinearLayout.LayoutParams(-1,dp(27)));
+            TextView label=tv(n,9,selected?Color.WHITE:Color.rgb(132,151,185));label.setTypeface(null,selected?1:0);label.setGravity(Gravity.CENTER);item.addView(label,new LinearLayout.LayoutParams(-1,dp(17)));
+            item.setOnClickListener(v->{if("Settings".equals(n))showSettings();else showHome(n);});nav.addView(item,new LinearLayout.LayoutParams(0,dp(49),1));
+        }
+        root.addView(nav,lp(dp(59),dp(5)));
         if(tab.equals("Chats"))loadChats();else if(tab.equals("Updates"))loadStatus();else if(tab.equals("Communities"))loadChannels();else if(tab.equals("Calls"))loadCalls();else if(tab.equals("Alerts"))loadNotifications();else if(tab.equals("Profile"))loadProfile();else showSettings();
     }
 
@@ -321,8 +333,8 @@ public class MainActivity extends AppCompatActivity {
         }).show();
     }
     private void showCreateInfo(String title,String detail){new AlertDialog.Builder(this).setTitle(title).setMessage(detail).setPositiveButton("OK",null).show();}
-    private void heading(String h,String s){TextView a=tv(h,24,text());a.setTypeface(null,1);body.addView(a,lp(-2,dp(3)));body.addView(tv(s,13,muted()),lp(-2,dp(14)));}
-    private void cardRow(LinearLayout row){row.setPadding(dp(12),dp(10),dp(12),dp(10));row.setBackground(rounded(card(),dp(20)));body.addView(row,lp(dp(78),dp(7)));}
+    private void heading(String h,String s){TextView eyebrow=tv("OLUNAA  /  "+activeHomeTab.toUpperCase(Locale.ROOT),9,GREEN);eyebrow.setTypeface(null,1);eyebrow.setLetterSpacing(0.12f);body.addView(eyebrow,lp(dp(18),dp(5)));TextView a=tv(h,27,text());a.setTypeface(null,1);body.addView(a,lp(-2,dp(6)));TextView sub=tv(s,13,muted());body.addView(sub,lp(-2,dp(18)));}
+    private void cardRow(LinearLayout row){row.setPadding(dp(14),dp(11),dp(14),dp(11));GradientDrawable panel=rounded(card(),dp(21));panel.setStroke(dp(1),Color.argb(dark?34:24,95,151,235));row.setBackground(panel);row.setElevation(dp(1));body.addView(row,lp(dp(82),dp(8)));}
     private void loadChats(){final LinearLayout target=body;final int generation=homeGeneration;heading("Your conversations","Private chats and group conversations");api("/conversations","GET",null,r->{if(generation!=homeGeneration||target!=body)return;if(!r.ok){message(r.error);return;}JSONArray a=r.data.optJSONArray("conversations");if(a!=null)for(int i=0;i<a.length();i++){JSONObject c=a.optJSONObject(i),o=c==null?null:c.optJSONObject("other");if(o!=null)chatRow(c,o);}});TextView groupTitle=tv("YOUR GROUPS",11,GREEN);groupTitle.setTypeface(null,1);target.addView(groupTitle,lp(dp(30),dp(15)));api("/groups","GET",null,r->{if(generation!=homeGeneration||target!=body)return;if(!r.ok){message(r.error);return;}JSONArray a=r.data.optJSONArray("groups");if(a==null||a.length()==0){TextView hint=tv("Create a group to start a conversation with several people.",12,muted());target.addView(hint,lp(dp(40),0));return;}for(int i=0;i<a.length();i++){JSONObject g=a.optJSONObject(i);if(g!=null)groupRow(g);}}); }
     private void createGroupDialog(){
         LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(dp(8),dp(8),dp(8),0);
