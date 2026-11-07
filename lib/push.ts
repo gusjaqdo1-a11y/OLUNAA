@@ -3,6 +3,31 @@ import { db } from "./db";
 
 type PushPayload = { title: string; body: string; data?: Record<string, string> };
 
+function limitUtf8(value: string, maxBytes: number) {
+  const encoder = new TextEncoder();
+  let output = "";
+  let used = 0;
+  for (const character of value) {
+    const size = encoder.encode(character).length;
+    if (used + size > maxBytes) break;
+    output += character;
+    used += size;
+  }
+  return output;
+}
+
+function buildFcmData(payload: PushPayload) {
+  const data: Record<string, string> = {};
+  for (const [key, value] of Object.entries(payload.data || {})) {
+    if (typeof value !== "string") continue;
+    const limit = key === "senderAvatarUrl" ? 900 : 500;
+    data[key] = limitUtf8(value, limit);
+  }
+  data.title = limitUtf8(payload.title || "OLUNAA", 180);
+  data.body = limitUtf8(payload.body || "You have a new notification", 700);
+  return data;
+}
+
 export async function sendPushToUsers(userIds: string[], payload: PushPayload) {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (!raw || !userIds.length) return { sent: 0, configured: false };
@@ -22,9 +47,9 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload) {
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ message: {
           token: device.token,
-          notification: { title: payload.title, body: payload.body },
-          data: payload.data || {},
-          android: { priority: "high", notification: { channel_id: "olunaa_messages", sound: "default" } },
+          // Data-only messages let Android build a rich notification with the sender's avatar.
+          data: buildFcmData(payload),
+          android: { priority: "high" },
         } }),
       });
       if (!response.ok) throw new Error(`FCM ${response.status}: ${(await response.text()).slice(0, 250)}`);

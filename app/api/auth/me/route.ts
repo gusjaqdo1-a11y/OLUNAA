@@ -6,5 +6,5 @@ export const runtime = "nodejs";
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ user: null }, { status: 401 });
-  return NextResponse.json({ user: { id: user.id, email: user.email, username: user.username, displayName: user.displayName, avatarUrl: user.avatarUrl, lastActiveAt: user.lastActiveAt, settings: user.settings } });
+  return NextResponse.json({ user: { id: user.id, email: user.email, username: user.username, displayName: user.displayName, avatarUrl: user.avatarUrl, verified: user.verified, lastActiveAt: user.lastActiveAt, settings: user.settings } });
 }
