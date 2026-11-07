@@ -258,8 +258,27 @@ public class MainActivity extends AppCompatActivity {
     private String chatCacheKey(){return "chats_cache_"+meId;}
     private String groupCacheKey(){return "groups_cache_"+meId;}
     private String messageCacheKey(String conversationId){return "messages_cache_"+meId+"_"+conversationId;}
-    private void renderChatRows(LinearLayout target,JSONArray rows){target.removeAllViews();for(int i=0;i<rows.length();i++){JSONObject conversation=rows.optJSONObject(i),other=conversation==null?null:conversation.optJSONObject("other");if(other!=null)chatRow(conversation,other);}}
-    private void renderGroupRows(LinearLayout target,JSONArray rows){target.removeAllViews();if(rows.length()==0){TextView hint=tv("Create a group to start a conversation with several people.",12,muted());target.addView(hint,lp(dp(40),0));return;}for(int i=0;i<rows.length();i++){JSONObject group=rows.optJSONObject(i);if(group!=null)groupRow(group);}}
+    private void renderChatRows(LinearLayout target,JSONArray rows){
+        target.removeAllViews();
+        LinkedHashMap<String,JSONObject> unique=new LinkedHashMap<>();
+        for(int i=0;i<rows.length();i++){
+            JSONObject conversation=rows.optJSONObject(i),other=conversation==null?null:conversation.optJSONObject("other");
+            if(conversation==null||other==null)continue;
+            String otherId=other.optString("id","");String conversationId=conversation.optString("id","");
+            String key="direct:"+(!otherId.isEmpty()?otherId:conversationId);
+            if(!unique.containsKey(key))unique.put(key,conversation);
+        }
+        for(JSONObject conversation:unique.values()){
+            JSONObject other=conversation.optJSONObject("other");
+            if(other!=null)chatRow(target,conversation,other);
+        }
+    }
+    private void renderGroupRows(LinearLayout target,JSONArray rows){
+        target.removeAllViews();
+        LinkedHashSet<String> seen=new LinkedHashSet<>();
+        if(rows.length()==0){TextView hint=tv("Create a group to start a conversation with several people.",12,muted());target.addView(hint,lp(dp(40),0));return;}
+        for(int i=0;i<rows.length();i++){JSONObject group=rows.optJSONObject(i);if(group==null)continue;String id=group.optString("id","");if(id.isEmpty()||seen.add(id))groupRow(target,group);}
+    }
     private void loadChatStories(LinearLayout target,int generation){
         LinearLayout section=new LinearLayout(this);section.setOrientation(LinearLayout.VERTICAL);
         LinearLayout titleRow=new LinearLayout(this);titleRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -362,8 +381,8 @@ public class MainActivity extends AppCompatActivity {
         });
     }
     private void showInviteGroupMember(String groupId){EditText query=input("Search by name, @username or email");LinearLayout results=new LinearLayout(this);results.setOrientation(LinearLayout.VERTICAL);ScrollView sc=new ScrollView(this);sc.addView(results);LinearLayout wrap=new LinearLayout(this);wrap.setOrientation(LinearLayout.VERTICAL);wrap.addView(query,lp(dp(52),dp(6)));wrap.addView(sc,new LinearLayout.LayoutParams(-1,dp(260)));query.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){String q=s.toString().trim();if(q.length()<2)return;api("/search?q="+URLEncoder.encode(q,StandardCharsets.UTF_8),"GET",null,r->{if(!r.ok)return;results.removeAllViews();JSONArray users=r.data.optJSONArray("users");if(users==null)return;for(int i=0;i<users.length();i++){JSONObject u=users.optJSONObject(i);if(u==null)continue;Button item=btn(u.optString("displayName","User")+"  @"+u.optString("username",""),false);results.addView(item,lp(dp(48),dp(4)));item.setOnClickListener(v->{JSONObject payload=new JSONObject();try{JSONArray ids=new JSONArray();ids.put(u.optString("id"));payload.put("userIds",ids);}catch(Exception ignored){}api("/groups/"+groupId+"/members","POST",payload,res->{if(!res.ok)message(res.error);else{message("Member invited.");showGroupMembers(groupId);}});});}});}public void afterTextChanged(android.text.Editable e){}});new AlertDialog.Builder(this).setTitle("Invite to group").setView(wrap).setNegativeButton("Close",null).show();}
-    private void groupRow(JSONObject g){LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(13),dp(11),dp(13),dp(11));row.setBackground(glass(22));row.setElevation(dp(2));ImageView av=avatar(g.optString("avatarUrl",""),1);row.addView(av,new LinearLayout.LayoutParams(dp(52),dp(52)));LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(12),0,0,0);TextView title=tv(g.optString("name","Group"),16,text());title.setTypeface(null,1);info.addView(title);info.addView(tv("@"+g.optString("handle",""),12,muted()));JSONArray members=g.optJSONArray("members");info.addView(tv((members==null?0:members.length())+" members",11,GREEN));row.addView(info,new LinearLayout.LayoutParams(0,dp(66),1));body.addView(row,lp(dp(76),dp(6)));row.setOnClickListener(v->{String cid=g.optString("conversationId","");if(!cid.isEmpty()){activeGroupId=g.optString("id","");openChat(cid,g.optString("name","Group"),g.optString("avatarUrl",""),true);}else api("/groups/"+g.optString("id")+"/join","POST",new JSONObject(),r->{if(!r.ok){message(r.error);return;}activeGroupId=g.optString("id","");openChat(r.data.optString("conversationId"),g.optString("name","Group"),g.optString("avatarUrl",""),true);});});row.setOnLongClickListener(v->{showGroupMembers(g.optString("id",""));return true;});}
-    private void chatRow(JSONObject c, JSONObject o) {
+    private void groupRow(LinearLayout target,JSONObject g){LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(13),dp(11),dp(13),dp(11));row.setBackground(glass(22));row.setElevation(dp(2));ImageView av=avatar(g.optString("avatarUrl",""),1);row.addView(av,new LinearLayout.LayoutParams(dp(52),dp(52)));LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(12),0,0,0);TextView title=tv(g.optString("name","Group"),16,text());title.setTypeface(null,1);info.addView(title);info.addView(tv("@"+g.optString("handle",""),12,muted()));JSONArray members=g.optJSONArray("members");info.addView(tv((members==null?0:members.length())+" members",11,GREEN));row.addView(info,new LinearLayout.LayoutParams(0,dp(66),1));target.addView(row,lp(dp(76),dp(6)));row.setOnClickListener(v->{String cid=g.optString("conversationId","");if(!cid.isEmpty()){activeGroupId=g.optString("id","");openChat(cid,g.optString("name","Group"),g.optString("avatarUrl",""),true);}else api("/groups/"+g.optString("id")+"/join","POST",new JSONObject(),r->{if(!r.ok){message(r.error);return;}activeGroupId=g.optString("id","");openChat(r.data.optString("conversationId"),g.optString("name","Group"),g.optString("avatarUrl",""),true);});});row.setOnLongClickListener(v->{showGroupMembers(g.optString("id",""));return true;});}
+    private void chatRow(LinearLayout target,JSONObject c, JSONObject o) {
         // ChatQurxan-style compact glass conversation card with a clear preview hierarchy.
         boolean online = o.optBoolean("online", false);
         LinearLayout row = new LinearLayout(this);
@@ -486,7 +505,7 @@ public class MainActivity extends AppCompatActivity {
         info.addView(previewLine, new LinearLayout.LayoutParams(-1, dp(25)));
         row.addView(info, new LinearLayout.LayoutParams(0, dp(62), 1));
 
-        body.addView(row, lp(dp(88), dp(8)));
+        target.addView(row, lp(dp(88), dp(8)));
         row.setOnClickListener(v -> openChat(c.optString("id"), displayName, o.optString("avatarUrl", ""), false, o.optBoolean("verified")));
     }
 
