@@ -1,5 +1,7 @@
 package com.olunaa.app
 
+import android.animation.ValueAnimator
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -48,6 +50,7 @@ class LiveKitCallActivity : AppCompatActivity() {
     private var remoteConnected = false
     private var seconds = 0
     private var callFinished = false
+    private var pulseAnimator: ValueAnimator? = null
     private val callTimeout = Runnable {
         if (!remoteConnected && !callFinished) {
             callFinished = true
@@ -93,9 +96,9 @@ class LiveKitCallActivity : AppCompatActivity() {
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         previousAudioMode = audioManager.mode
         previousSpeakerState = audioManager.isSpeakerphoneOn
-        window.statusBarColor = Color.rgb(5, 11, 24)
-        window.navigationBarColor = Color.rgb(5, 11, 24)
-        window.setBackgroundDrawable(GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(5, 11, 24), Color.rgb(9, 28, 52))))
+        window.statusBarColor = Color.rgb(10, 8, 32)
+        window.navigationBarColor = Color.rgb(10, 8, 32)
+        window.setBackgroundDrawable(GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(10, 8, 32), Color.rgb(15, 18, 55), Color.rgb(7, 25, 45))))
         buildUi()
         val needed = mutableListOf(Manifest.permission.RECORD_AUDIO)
         if (intent.getStringExtra("mode") == "video") needed.add(Manifest.permission.CAMERA)
@@ -128,28 +131,39 @@ class LiveKitCallActivity : AppCompatActivity() {
             setPadding(dp(22), dp(28), dp(22), dp(24))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(8, 15, 35), Color.rgb(7, 24, 48), Color.rgb(10, 10, 28))
+                intArrayOf(Color.rgb(10, 8, 32), Color.rgb(18, 13, 57), Color.rgb(7, 22, 44))
             )
         }
 
         val top = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
-        top.addView(label("OLUNAA  ·  SECURE CALL", 11f, Color.rgb(130, 169, 255), true),
+        top.addView(label("OLUNAA  ·  SECURE CALL", 11f, Color.rgb(34, 211, 238), true),
             LinearLayout.LayoutParams(-1, dp(28)))
         status = label("Calling…", 25f, Color.WHITE, true)
         top.addView(status, LinearLayout.LayoutParams(-1, dp(42)))
-        detail = label("Connecting to the other person", 13f, Color.rgb(158, 174, 205))
+        detail = label("Connecting to the other person", 13f, Color.rgb(174, 169, 207))
         top.addView(detail, LinearLayout.LayoutParams(-1, dp(30)))
         root.addView(top, LinearLayout.LayoutParams(-1, dp(104)))
 
         val stage = FrameLayout(this).apply {
-            background = panel(Color.argb(150, 15, 34, 59), 34, Color.argb(125, 85, 166, 245)).apply { setStroke(dp(1), Color.argb(100, 116, 196, 255)) }
+            background = panel(Color.argb(165, 31, 20, 73), 34, Color.argb(125, 139, 92, 246)).apply { setStroke(dp(1), Color.argb(115, 34, 211, 238)) }
         }
         avatar = label("O", 54f, Color.WHITE, true).apply {
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(50, 151, 255), Color.rgb(23, 91, 220))).apply { shape = GradientDrawable.OVAL }
+                intArrayOf(Color.rgb(139, 92, 246), Color.rgb(34, 211, 238))).apply { shape = GradientDrawable.OVAL }
         }
         val avatarSize = dp(if (videoMode) 160 else 184)
         stage.addView(avatar, FrameLayout.LayoutParams(avatarSize, avatarSize, Gravity.CENTER))
+        pulseAnimator = ValueAnimator.ofFloat(1f, 1.075f).apply {
+            duration = 1350L
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.REVERSE
+            interpolator = AccelerateDecelerateInterpolator()
+            addUpdateListener { animation ->
+                val scale = animation.animatedValue as Float
+                if (avatar.visibility == View.VISIBLE) { avatar.scaleX = scale; avatar.scaleY = scale }
+            }
+            start()
+        }
         video = SurfaceViewRenderer(this).apply { visibility = if (videoMode) View.VISIBLE else View.GONE }
         if (videoMode) stage.addView(video, FrameLayout.LayoutParams(-1, -1))
         root.addView(stage, LinearLayout.LayoutParams(-1, 0, 1f).apply {
@@ -159,17 +173,17 @@ class LiveKitCallActivity : AppCompatActivity() {
         val name = intent.getStringExtra("otherName").orEmpty().ifBlank { "OLUNAA contact" }
         root.addView(label(name, 20f, Color.WHITE, true), LinearLayout.LayoutParams(-1, dp(34)))
         root.addView(label(if (videoMode) "Video conversation" else "Voice conversation", 12f,
-            Color.rgb(145, 164, 199)), LinearLayout.LayoutParams(-1, dp(28)))
+            Color.rgb(174, 169, 207)), LinearLayout.LayoutParams(-1, dp(28)))
 
         val controls = LinearLayout(this).apply {
             gravity = Gravity.CENTER
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(20), 0, 0)
         }
-        muteControl = addControl(controls, "Mic", "Mute") { toggleMute() }
-        speakerControl = addControl(controls, "Speaker", "Speaker") { toggleSpeaker() }
-        if (videoMode) cameraControl = addControl(controls, "Video", "Camera") { toggleCamera() }
-        addControl(controls, "End", "End") { endCall() }
+        muteControl = addControl(controls, "🎙", "Mute") { toggleMute() }
+        speakerControl = addControl(controls, "🔊", "Speaker") { toggleSpeaker() }
+        if (videoMode) cameraControl = addControl(controls, "▣", "Camera") { toggleCamera() }
+        addControl(controls, "✕", "End") { endCall() }
         root.addView(controls, LinearLayout.LayoutParams(-1, dp(104)))
         setContentView(root)
     }
@@ -177,8 +191,8 @@ class LiveKitCallActivity : AppCompatActivity() {
     private fun addControl(row: LinearLayout, symbol: String, caption: String, action: () -> Unit): TextView {
         val item = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
         val button = label(symbol, 12f, Color.WHITE, true).apply {
-            background = panel(if (caption == "End") Color.rgb(224, 54, 77) else Color.argb(205, 19, 47, 77),
-                24, Color.argb(115, 105, 183, 255)).apply { setStroke(dp(1), Color.argb(100, 140, 207, 255)) }
+            background = panel(if (caption == "End") Color.rgb(220, 55, 90) else Color.argb(205, 40, 27, 83),
+                24, Color.argb(115, 139, 92, 246)).apply { setStroke(dp(1), Color.argb(105, 34, 211, 238)) }
             setOnClickListener { action() }
         }
         item.addView(button, LinearLayout.LayoutParams(dp(62), dp(58)))
@@ -299,6 +313,8 @@ class LiveKitCallActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        pulseAnimator?.cancel()
+        pulseAnimator = null
         stopRingback()
         handler.removeCallbacks(timer)
         handler.removeCallbacks(callTimeout)
