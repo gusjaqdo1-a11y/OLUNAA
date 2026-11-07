@@ -310,11 +310,7 @@ function save(){try{localStorage.setItem('cq-set2',JSON.stringify(st))}catch(e){
 function hm(d){d=d||new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')}
 function dur(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
 function esc(s){return String(s).replace(/[&<>"]/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]})}
-function seed(){return[]},
-{id:2,n:'Dev Team',h:200,sd:1,g:1,vf:1,pin:1,u:5,m:[{t:'Build 482 passed',me:0,tm:'08:30'},{t:'Deploying to staging at 9:00',me:0,tm:'08:41'}],story:['Release day']},
-{id:3,n:'Omar Hassan',h:160,sd:2,on:1,m:[{t:'Check this playlist',me:0,tm:'Yesterday',v:1},{t:'Fire',me:1,s:'delivered',tm:'Yesterday'}],story:[]},
-{id:4,n:'Layla Reyes',h:330,sd:3,arch:1,m:[{t:'Good night!',me:0,tm:'Mon'}],story:['Late-night coding']},
-{id:5,n:'Yusuf Ali',h:45,sd:1,on:1,m:[{t:'Match tonight at 8?',me:0,tm:'07:55'},{t:'Count me in!',me:1,s:'sent',tm:'07:58'}],story:[]}]}
+function seed(){return[]}
 var D;try{D=JSON.parse(localStorage.getItem('cq-data4')||'null')}catch(e){}
 if(!D||!D.length)D=seed();
 function saveD(){try{localStorage.setItem('cq-data4',JSON.stringify(D,function(k,v){return k.charAt(0)=='_'?undefined:v}))}catch(e){}}
