@@ -201,7 +201,7 @@ public class MainActivity extends AppCompatActivity {
         if(tab.equals("Chats")){
             LinearLayout searchWrap=new LinearLayout(this);searchWrap.setGravity(Gravity.CENTER_VERTICAL);searchWrap.setPadding(dp(15),0,dp(14),0);
             GradientDrawable searchBg=rounded(field(),dp(17));searchBg.setStroke(dp(1),Color.argb(48,68,151,255));searchWrap.setBackground(searchBg);
-            TextView glyph=tv("⌕",24,muted());glyph.setGravity(Gravity.CENTER);searchWrap.addView(glyph,new LinearLayout.LayoutParams(dp(28),dp(49)));
+            ImageView glyph=new ImageView(this);glyph.setImageResource(R.drawable.ic_action_search);glyph.setImageTintList(android.content.res.ColorStateList.valueOf(muted()));glyph.setContentDescription("Search");glyph.setPadding(dp(5),dp(5),dp(5),dp(5));searchWrap.addView(glyph,new LinearLayout.LayoutParams(dp(28),dp(49)));
             EditText query=input("Search messages, people and groups");query.setBackgroundColor(Color.TRANSPARENT);query.setPadding(dp(4),0,0,0);searchWrap.addView(query,new LinearLayout.LayoutParams(0,dp(49),1));
             root.addView(searchWrap,lp(dp(51),dp(12)));searchWrap.setOnClickListener(v->showSearch());query.setOnClickListener(v->showSearch());
         }
@@ -209,10 +209,10 @@ public class MainActivity extends AppCompatActivity {
         ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.setClipToPadding(false);sc.addView(body);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
         if(tab.equals("Chats")){loadHomeStoryStrip();}
         LinearLayout nav=new LinearLayout(this);GradientDrawable navBackground=rounded(Color.rgb(9,16,34),dp(23));navBackground.setStroke(dp(1),Color.argb(65,66,146,255));nav.setBackground(navBackground);nav.setPadding(dp(5),dp(6),dp(5),dp(6));
-        String[] labels={"Chats","Updates","Communities","Calls","Settings"};String[] symbols={"◉","◌","◇","⌕","⚙"};
+        String[] labels={"Chats","Updates","Communities","Calls","Settings"};int[] icons={R.drawable.ic_nav_chats,R.drawable.ic_nav_updates,R.drawable.ic_nav_communities,R.drawable.ic_nav_calls,R.drawable.ic_nav_settings};
         for(int i=0;i<labels.length;i++){final String n=labels[i];boolean selected=n.equals(tab);LinearLayout item=new LinearLayout(this);item.setOrientation(LinearLayout.VERTICAL);item.setGravity(Gravity.CENTER);
             item.setBackground(selected?gradient(Color.rgb(38,91,191),Color.rgb(20,54,120),dp(16)):rounded(Color.TRANSPARENT,dp(16)));
-            TextView icon=tv(symbols[i],21,selected?Color.WHITE:Color.rgb(120,143,181));icon.setGravity(Gravity.CENTER);item.addView(icon,new LinearLayout.LayoutParams(-1,dp(27)));
+            ImageView icon=new ImageView(this);icon.setImageResource(icons[i]);icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);icon.setImageTintList(android.content.res.ColorStateList.valueOf(selected?Color.WHITE:Color.rgb(120,157,210)));icon.setContentDescription(n);item.addView(icon,new LinearLayout.LayoutParams(dp(25),dp(27)));
             TextView label=tv(n,9,selected?Color.WHITE:Color.rgb(132,151,185));label.setTypeface(null,selected?1:0);label.setGravity(Gravity.CENTER);item.addView(label,new LinearLayout.LayoutParams(-1,dp(17)));
             item.setOnClickListener(v->{if("Settings".equals(n))showSettings();else showHome(n);});nav.addView(item,new LinearLayout.LayoutParams(0,dp(49),1));
         }
