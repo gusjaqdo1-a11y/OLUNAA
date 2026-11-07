@@ -65,23 +65,24 @@ jobs:
       - name: Verify APK and generate checksum
         id: apk
         run: |
-          APK="android/app/build/outputs/apk/release/app-release.apk"
-          test -s "$APK"
+          APK=$(find android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)
+          test -n "$APK" && test -s "$APK"
           mkdir -p release-metadata
-          sha256sum "$APK" | tee release-metadata/app-release.apk.sha256
+          cp "$APK" release-metadata/OLUNAA-release.apk
+          sha256sum release-metadata/OLUNAA-release.apk | tee release-metadata/OLUNAA-release.apk.sha256
           if [ -n "${OLUNAA_RELEASE_STORE_FILE:-}" ]; then
-            apksigner verify --verbose "$APK"
+            apksigner verify --verbose release-metadata/OLUNAA-release.apk
             echo "signed=true" >> "$GITHUB_OUTPUT"
           else
             echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
-          printf 'source_commit=%s\nversion=%s\nrun_id=%s\nsigned=%s\n' "$GITHUB_SHA" "${{ steps.android-version.outputs.version }}" "$GITHUB_RUN_ID" "${{ steps.apk.outputs.signed }}" > release-metadata/build-info.txt
+          printf 'source_commit=%s\nversion=%s\nrun_id=%s\nsigned=%s\n' "$GITHUB_SHA" "${{ steps.android-version.outputs.version }}" "$GITHUB_RUN_ID" "$([ -n "${OLUNAA_RELEASE_STORE_FILE:-}" ] && echo true || echo false)" > release-metadata/build-info.txt
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: OLUNAA-release-apk-${{ github.sha }}
           path: |
-            android/app/build/outputs/apk/release/app-release.apk
+            release-metadata/OLUNAA-release.apk
             release-metadata/*
       - name: Publish signed GitHub Release
         if: ${{ steps.signing.outputs.configured == 'true' && steps.apk.outputs.signed == 'true' }}
