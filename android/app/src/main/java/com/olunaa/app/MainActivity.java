@@ -68,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout.LayoutParams lp(int h,int b){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,h);p.setMargins(0,0,0,b);return p;}
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private void rootBase(){
-        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(bg());root.setPadding(dp(12),0,dp(12),0);setContentView(root);
+        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundResource(R.drawable.bg_olunaa_canvas);root.setPadding(dp(12),0,dp(12),0);setContentView(root);
         ViewCompat.setOnApplyWindowInsetsListener(root,(v,in)->{androidx.core.graphics.Insets x=in.getInsets(WindowInsetsCompat.Type.systemBars()|WindowInsetsCompat.Type.displayCutout());v.setPadding(dp(12)+x.left,x.top+dp(8),dp(12)+x.right,x.bottom+dp(6));return in;});
         ViewCompat.requestApplyInsets(root);
     }
