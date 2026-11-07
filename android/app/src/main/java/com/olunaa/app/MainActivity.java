@@ -654,6 +654,76 @@ public class MainActivity extends AppCompatActivity {
             target.requestFocus();
         }).setNegativeButton("Close",null).show();
     }
+
+    private void beginVoiceRecording(TextView control,LinearLayout list){
+        if(Build.VERSION.SDK_INT>=23&&checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){
+            voiceRecordControl=control;activeVoiceList=list;requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},REQ_AUDIO_RECORD);return;
+        }
+        startVoiceRecording(control,list);
+    }
+    private void startVoiceRecording(TextView control,LinearLayout list){
+        if(recordingVoice)return;
+        try{
+            voiceRecordingFile=File.createTempFile("olunaa-voice-",".m4a",getCacheDir());
+            if(Build.VERSION.SDK_INT>=31)voiceRecorder=new MediaRecorder(this);else voiceRecorder=new MediaRecorder();
+            voiceRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+            voiceRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            voiceRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            voiceRecorder.setAudioEncodingBitRate(64000);
+            voiceRecorder.setAudioSamplingRate(32000);
+            voiceRecorder.setMaxDuration(60000);
+            voiceRecorder.setMaxFileSize(2250000L);
+            voiceRecorder.setOutputFile(voiceRecordingFile.getAbsolutePath());
+            voiceRecorder.setOnInfoListener((recorder,what,extra)->{if(what==MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED||what==MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED)stopVoiceRecording(list);});
+            voiceRecorder.prepare();voiceRecorder.start();recordingVoice=true;voiceRecordControl=control;activeVoiceList=list;
+            control.setText("■");control.setTextColor(Color.WHITE);control.setBackground(rounded(Color.rgb(220,55,90),dp(15)));
+            message("Recording voice message · tap ■ to send (max 60 seconds).");
+        }catch(Exception e){recordingVoice=false;releaseVoiceRecorder();message("Could not start microphone recording.");}
+    }
+    private void stopVoiceRecording(LinearLayout list){
+        if(!recordingVoice)return;recordingVoice=false;
+        try{voiceRecorder.stop();}catch(Exception ignored){}finally{releaseVoiceRecorder();}
+        TextView control=voiceRecordControl;if(control!=null){control.setText("🎙");control.setTextColor(GREEN);control.setBackground(rounded(Color.argb(dark?65:28,139,92,246),dp(15)));}
+        try{
+            if(voiceRecordingFile==null||!voiceRecordingFile.exists()||voiceRecordingFile.length()<512){message("Voice recording was too short.");return;}
+            if(voiceRecordingFile.length()>2350000L){message("Voice message is too large. Please record a shorter message.");return;}
+            byte[] bytes=java.nio.file.Files.readAllBytes(voiceRecordingFile.toPath());
+            String dataUrl="data:audio/mp4;base64,"+android.util.Base64.encodeToString(bytes,android.util.Base64.NO_WRAP);
+            JSONObject payload=new JSONObject(),optimistic=new JSONObject();
+            String conversationId=activeConversation;
+            payload.put("conversationId",conversationId);payload.put("mediaUrl",dataUrl);payload.put("mediaType","audio/mp4");
+            optimistic.put("id","local-"+UUID.randomUUID());optimistic.put("senderId",meId);optimistic.put("body","");optimistic.put("mediaUrl",dataUrl);optimistic.put("mediaType","audio/mp4");optimistic.put("createdAt",new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss",java.util.Locale.US).format(new java.util.Date()));
+            bubble(list,optimistic);ScrollView scroll=findScroll(list);if(scroll!=null)scroll.post(()->scroll.fullScroll(View.FOCUS_DOWN));
+            api("/messages","POST",payload,r->{if(!conversationId.equals(activeConversation))return;if(!r.ok){message(r.error);loadMessages(list);}else loadMessages(list);});
+        }catch(Exception e){message("Could not send this voice message.");}
+        finally{if(voiceRecordingFile!=null)voiceRecordingFile.delete();voiceRecordingFile=null;}
+    }
+    private void releaseVoiceRecorder(){try{if(voiceRecorder!=null){voiceRecorder.reset();voiceRecorder.release();}}catch(Exception ignored){}voiceRecorder=null;}
+    private void playVoiceMessage(String media,TextView control){
+        try{
+            if(activeVoicePlayer!=null){try{activeVoicePlayer.stop();activeVoicePlayer.release();}catch(Exception ignored){}activeVoicePlayer=null;}
+            if(activeVoiceFile!=null&&activeVoiceFile.exists())activeVoiceFile.delete();activeVoiceFile=null;
+            MediaPlayer player=new MediaPlayer();activeVoicePlayer=player;
+            if(media.startsWith("data:audio/")){
+                int comma=media.indexOf(',');if(comma<0)throw new IOException("Invalid voice data");
+                byte[] bytes=android.util.Base64.decode(media.substring(comma+1),android.util.Base64.DEFAULT);
+                activeVoiceFile=File.createTempFile("olunaa-play-",".m4a",getCacheDir());
+                try(FileOutputStream out=new FileOutputStream(activeVoiceFile)){out.write(bytes);}
+                player.setDataSource(activeVoiceFile.getAbsolutePath());
+            }else player.setDataSource(media);
+            player.setOnPreparedListener(p->{p.start();control.setText("Ⅱ   Playing voice message");});
+            player.setOnCompletionListener(p->{control.setText("▶   Voice message");try{p.release();}catch(Exception ignored){}if(activeVoicePlayer==p)activeVoicePlayer=null;});
+            player.setOnErrorListener((p,what,extra)->{control.setText("▶   Voice message");try{p.release();}catch(Exception ignored){}if(activeVoicePlayer==p)activeVoicePlayer=null;message("Could not play this voice message.");return true;});
+            player.prepareAsync();
+        }catch(Exception e){control.setText("▶   Voice message");message("Could not open this voice message.");}
+    }
+    @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){
+        super.onRequestPermissionsResult(requestCode,permissions,grantResults);
+        if(requestCode==REQ_AUDIO_RECORD){
+            if(grantResults.length>0&&grantResults[0]==PackageManager.PERMISSION_GRANTED&&voiceRecordControl!=null&&activeVoiceList!=null)startVoiceRecording(voiceRecordControl,activeVoiceList);
+            else message("Microphone permission is needed to record voice messages.");
+        }
+    }
     private void sendMessage(EditText box,LinearLayout list){String s=box.getText().toString().trim();if(s.isEmpty()||activeConversation.isEmpty())return;String conversationId=activeConversation,replyId=pendingReplyId,replyBody=pendingReplyBody,replySender=pendingReplySender;JSONObject payload=new JSONObject(),optimistic=new JSONObject();try{payload.put("conversationId",conversationId);payload.put("body",s);if(!replyId.isEmpty())payload.put("replyToId",replyId);optimistic.put("id","local-"+UUID.randomUUID());optimistic.put("senderId",meId);optimistic.put("body",s);optimistic.put("createdAt",new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss",java.util.Locale.US).format(new java.util.Date()));optimistic.put("deliveredAt","");optimistic.put("seenAt","");if(!replyId.isEmpty()){optimistic.put("replyToId",replyId);optimistic.put("replyToBody",replyBody);optimistic.put("replyToSender",replySender);}}catch(Exception ignored){}box.setText("");setTyping(false);clearReply();bubble(list,optimistic);ScrollView scroll=findScroll(list);if(scroll!=null)scroll.post(()->scroll.fullScroll(View.FOCUS_DOWN));api("/messages","POST",payload,r->{if(!conversationId.equals(activeConversation))return;if(!r.ok){message(r.error);loadMessages(list);}else loadMessages(list);});}
     private void clearReply(){pendingReplyId=pendingReplyBody=pendingReplySender="";if(chatReplyHint!=null)chatReplyHint.setVisibility(View.GONE);}
     private void setReply(JSONObject m){pendingReplyId=m.optString("id","");pendingReplyBody=m.optString("body",m.optString("mediaType","Media"));JSONObject sender=m.optJSONObject("sender");pendingReplySender=sender==null?"User":sender.optString("displayName","User");if(chatReplyHint!=null){chatReplyHint.setText("Replying to "+pendingReplySender+": "+pendingReplyBody);chatReplyHint.setVisibility(View.VISIBLE);}}
@@ -686,6 +756,13 @@ public class MainActivity extends AppCompatActivity {
         String avatar=intent.getStringExtra("senderAvatarUrl");
         intent.removeExtra("type");
         openChat(conversationId,sender==null||sender.isEmpty()?"OLUNAA contact":sender,avatar==null?"":avatar,false,false);
+    }
+
+    @Override protected void onDestroy(){
+        if(recordingVoice){try{voiceRecorder.stop();}catch(Exception ignored){}releaseVoiceRecorder();if(voiceRecordingFile!=null)voiceRecordingFile.delete();}
+        try{if(activeVoicePlayer!=null){activeVoicePlayer.release();activeVoicePlayer=null;}}catch(Exception ignored){}
+        if(activeVoiceFile!=null)activeVoiceFile.delete();
+        super.onDestroy();
     }
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);handleIncomingCallIntent(intent);handleMessageNotificationIntent(intent);}
     private void startIncomingCallListener(){if(meId.isEmpty())return;try{if(realtimeClient!=null)realtimeClient.close();ClientOptions options=new ClientOptions();options.authUrl=API+"/realtime/token";options.authMethod="GET";String cookies=prefs.getString("cookies","");if(!cookies.isEmpty())options.authHeaders=new Param[]{new Param("Cookie",cookies)};options.clientId=meId;realtimeClient=new AblyRealtime(options);incomingCallChannel=realtimeClient.channels.get("user:"+meId);incomingCallChannel.subscribe(msg->{if(!"call:invite".equals(msg.name))return;try{JSONObject data;if(msg.data instanceof JSONObject)data=(JSONObject)msg.data;else if(msg.data instanceof Map)data=new JSONObject((Map)msg.data);else data=new JSONObject(String.valueOf(msg.data));main.post(()->showIncomingCallDialog(data));}catch(Exception ignored){}});}catch(Exception e){android.util.Log.w("OLUNAA","Incoming call listener unavailable",e);}}
