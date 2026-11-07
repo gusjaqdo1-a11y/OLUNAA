@@ -35,6 +35,18 @@ jobs:
         run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
       - name: Configure Gradle cache
         uses: gradle/actions/setup-gradle@v6
+      - name: Validate embedded ChatQurxan JavaScript
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path("android/app/src/main/assets/chatqurxan-ultra.html").read_text()
+          scripts = re.findall(r"<script>(.*?)</script>", html, re.S)
+          if len(scripts) != 1:
+              raise SystemExit(f"Expected one inline script, found {len(scripts)}")
+          Path("/tmp/chatqurxan.js").write_text(scripts[0])
+          PY
+          node --check /tmp/chatqurxan.js
       - name: Build release APK
         working-directory: android
         run: gradle assembleRelease
