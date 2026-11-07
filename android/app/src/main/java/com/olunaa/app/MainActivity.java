@@ -265,7 +265,7 @@ public class MainActivity extends AppCompatActivity {
             JSONObject conversation=rows.optJSONObject(i),other=conversation==null?null:conversation.optJSONObject("other");
             if(conversation==null||other==null)continue;
             String otherId=other.optString("id","");String conversationId=conversation.optString("id","");
-            String key="direct:"+(!otherId.isEmpty()?otherId:conversationId);
+            String key="direct".equals(conversation.optString("type","direct"))?"direct:"+(!otherId.isEmpty()?otherId:conversationId):"conversation:"+conversationId;
             if(!unique.containsKey(key))unique.put(key,conversation);
         }
         for(JSONObject conversation:unique.values()){
