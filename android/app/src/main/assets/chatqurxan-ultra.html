@@ -316,7 +316,7 @@ if(!D||!D.length)D=seed();
 function saveD(){try{localStorage.setItem('cq-data4',JSON.stringify(D,function(k,v){return k.charAt(0)=='_'?undefined:v}))}catch(e){}}
 var CALLS=[];try{CALLS=JSON.parse(localStorage.getItem('cq-calls2')||'null')||[]}catch(e){CALLS=[]}
 function saveC(){try{localStorage.setItem('cq-calls2',JSON.stringify(CALLS))}catch(e){}}
-var cur=null,nid=Math.max.apply(null,D.map(function(c){return c.id}))+1,ARCH=0,FIL='all',tt,lpT,lp=0;
+var cur=null,nid=1,ARCH=0,FIL='all',tt,lpT,lp=0;
 function byId(i){return D.filter(function(c){return c.id==i})[0]}
 function lastTxt(c){var m=c.m[c.m.length-1];return m?(m.v?'Voice message':m.a?m.a:m.t):'No messages yet'}
 /* ---------- theme / accent tuner ---------- */
